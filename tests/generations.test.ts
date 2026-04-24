@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/types.js';
 import {
@@ -7,6 +10,7 @@ import {
   rawForStep,
   runDetailSummary,
   stepSummary,
+  readDatabase,
   stepsForRun,
   summarizeRun,
   toolsForTarget,
@@ -307,6 +311,31 @@ describe('generations queries', () => {
         }),
       ]),
     );
+  });
+
+  it('validates generations database shape when reading from disk', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aisdk-dt-'));
+    const badFile = path.join(tmpDir, 'generations.json');
+    fs.writeFileSync(badFile, JSON.stringify({ runs: [{}], steps: [] }), 'utf8');
+
+    expect(() => readDatabase(badFile)).toThrow('Invalid generations database');
+  });
+
+  it('ignores malformed output tool-call/message structures safely', () => {
+    const malformedStep = {
+      ...db.steps[0]!,
+      output: JSON.stringify({
+        finishReason: 'tool-calls',
+        toolCalls: [{ type: 'tool-call', toolCallId: 'broken' }],
+      }),
+    };
+
+    const summary = stepSummary(malformedStep, [malformedStep]);
+
+    expect(summary).toMatchObject({
+      outputSummary: { type: 'response', label: 'Response' },
+      output: { toolCallCount: 0 },
+    });
   });
 });
 
