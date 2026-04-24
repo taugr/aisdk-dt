@@ -2,7 +2,6 @@
   "name": "aisdk-devtools-cli",
   "version": "0.1.0",
   "description": "CLI for querying AI SDK DevTools generations.json files.",
-  "type": "module",
   "bin": {
     "aisdk-dt": "./dist/cli.js"
   },
@@ -10,8 +9,13 @@
     "dist",
     ".agents/skills/aisdk-devtools-generations/SKILL.md"
   ],
+  "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "lint": "oxlint -c oxlint.json .",
+    "lint:fix": "oxlint -c oxlint.json . --fix",
+    "format": "oxfmt . --check",
+    "format:fix": "oxfmt . --write",
     "test": "vitest --run",
     "test:watch": "vitest"
   },
@@ -20,6 +24,9 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
+    "oxfmt": "^0.46.0",
+    "oxlint": "^1.61.0",
+    "oxlint-tsgolint": "^0.21.1",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   },
