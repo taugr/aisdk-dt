@@ -1,0 +1,29 @@
+{
+  "name": "aisdk-devtools-cli",
+  "version": "0.1.0",
+  "description": "CLI for querying AI SDK DevTools generations.json files.",
+  "type": "module",
+  "bin": {
+    "aisdk-dt": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    ".agents/skills/aisdk-devtools-generations/SKILL.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest --run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
