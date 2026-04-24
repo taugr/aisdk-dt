@@ -42,14 +42,20 @@ const db: Database = {
       duration_ms: 1200,
       input: JSON.stringify({
         prompt: [
-          { role: 'system', content: 'System guidance that should be queryable.' },
+          {
+            role: 'system',
+            content: 'System guidance that should be queryable.',
+          },
           { role: 'user', content: 'Find the current status.' },
         ],
         tools: [
           {
             name: 'lookupStatus',
             description: 'Look up status.',
-            parameters: { type: 'object', properties: { id: { type: 'string' } } },
+            parameters: {
+              type: 'object',
+              properties: { id: { type: 'string' } },
+            },
           },
         ],
         toolChoice: { type: 'auto' },
@@ -75,9 +81,16 @@ const db: Database = {
         raw: { providerTokens: 14 },
       }),
       error: null,
-      raw_request: JSON.stringify({ model: 'test-model', input: [{ role: 'user', content: 'Find the current status.' }] }),
-      raw_response: JSON.stringify([{ type: 'tool-call', toolName: 'lookupStatus' }]),
-      raw_chunks: JSON.stringify([{ provider: 'chunk', payload: { id: 'tc-1' } }]),
+      raw_request: JSON.stringify({
+        model: 'test-model',
+        input: [{ role: 'user', content: 'Find the current status.' }],
+      }),
+      raw_response: JSON.stringify([
+        { type: 'tool-call', toolName: 'lookupStatus' },
+      ]),
+      raw_chunks: JSON.stringify([
+        { provider: 'chunk', payload: { id: 'tc-1' } },
+      ]),
       provider_options: JSON.stringify({ test: { mode: 'fast' } }),
     },
     {
@@ -127,7 +140,9 @@ const db: Database = {
       started_at: '2026-01-01T00:00:01.100Z',
       duration_ms: null,
       input: JSON.stringify({
-        prompt: [{ role: 'user', content: [{ type: 'text', text: 'Nested request' }] }],
+        prompt: [
+          { role: 'user', content: [{ type: 'text', text: 'Nested request' }] },
+        ],
       }),
       output: JSON.stringify({
         finishReason: 'stop',
@@ -150,7 +165,9 @@ const db: Database = {
       provider: 'test.provider',
       started_at: '2026-01-01T00:00:03.000Z',
       duration_ms: 100,
-      input: JSON.stringify({ prompt: [{ role: 'user', content: 'Fail now' }] }),
+      input: JSON.stringify({
+        prompt: [{ role: 'user', content: 'Fail now' }],
+      }),
       output: null,
       usage: null,
       error: 'Synthetic failure',
@@ -182,7 +199,10 @@ describe('generations queries', () => {
   });
 
   it('builds run detail with child runs and timeline spans', () => {
-    const detail = runDetailSummary(db, 'run-root', { includeChildren: true, timeline: true });
+    const detail = runDetailSummary(db, 'run-root', {
+      includeChildren: true,
+      timeline: true,
+    });
 
     expect(detail.childRuns).toHaveLength(1);
     expect(detail.timeline).toEqual(
@@ -222,14 +242,16 @@ describe('generations queries', () => {
       }),
     ]);
 
-    expect(getMessagesForRun(db, 'run-root', { parts: 'tool-results' })).toEqual([
-      expect.objectContaining({ role: 'tool' }),
-    ]);
+    expect(
+      getMessagesForRun(db, 'run-root', { parts: 'tool-results' }),
+    ).toEqual([expect.objectContaining({ role: 'tool' })]);
   });
 
   it('pairs output tool calls with next-step tool results', () => {
     const step = db.steps[0]!;
-    const output = outputForStep(step, stepsForRun(db, 'run-root'), { tools: true });
+    const output = outputForStep(step, stepsForRun(db, 'run-root'), {
+      tools: true,
+    });
 
     expect(output.toolCalls).toEqual([
       expect.objectContaining({
@@ -241,7 +263,9 @@ describe('generations queries', () => {
   });
 
   it('queries tools and usage for either a run or step', () => {
-    expect(toolsForTarget(db, 'run-root', { toolCallId: 'tc-1' })).toMatchObject({
+    expect(
+      toolsForTarget(db, 'run-root', { toolCallId: 'tc-1' }),
+    ).toMatchObject({
       summary: { availableToolCount: 1, toolCallCount: 1, toolResultCount: 1 },
     });
 
@@ -256,7 +280,10 @@ describe('generations queries', () => {
   });
 
   it('queries raw fields by path without forcing full output', () => {
-    const raw = rawForStep(db.steps[0]!, { provider: true, jsonPath: '$[0].payload.id' });
+    const raw = rawForStep(db.steps[0]!, {
+      provider: true,
+      jsonPath: '$[0].payload.id',
+    });
 
     expect(raw).toMatchObject({
       fields: {
@@ -273,7 +300,11 @@ describe('generations queries', () => {
 
     expect(spans).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ stepId: 'step-child', label: 'search-helper', isInProgress: true }),
+        expect.objectContaining({
+          stepId: 'step-child',
+          label: 'search-helper',
+          isInProgress: true,
+        }),
       ]),
     );
   });
