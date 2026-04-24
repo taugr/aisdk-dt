@@ -1,5 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  databaseSchema,
+  parsedInputSchema,
+  parsedOutputSchema,
+  parsedUsageSchema,
+} from './schema.js';
 import type {
   ChildRun,
   ContentPart,
@@ -32,11 +38,14 @@ export function resolveDbPath(file?: string): string {
 export function readDatabase(file?: string): Database {
   const dbPath = resolveDbPath(file);
   const content = fs.readFileSync(dbPath, 'utf8');
-  const parsed = JSON.parse(content) as Partial<Database>;
-  if (!Array.isArray(parsed.runs) || !Array.isArray(parsed.steps)) {
-    throw new Error(`Invalid generations database: ${dbPath}`);
+  const parsed = JSON.parse(content) as unknown;
+  const result = databaseSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(
+      `Invalid generations database: ${dbPath} (${result.error.issues[0]?.message ?? 'schema mismatch'})`,
+    );
   }
-  return { runs: parsed.runs, steps: parsed.steps };
+  return { runs: result.data.runs, steps: result.data.steps };
 }
 
 export function parseJson<T = unknown>(
@@ -48,6 +57,26 @@ export function parseJson<T = unknown>(
   } catch {
     return value as T;
   }
+}
+
+export function parseInput(value: string | null | undefined): ParsedInput | null {
+  const parsed = parseJson<unknown>(value);
+  const result = parsedInputSchema.safeParse(parsed);
+  return result.success ? result.data : null;
+}
+
+export function parseOutput(
+  value: string | null | undefined,
+): ParsedOutput | null {
+  const parsed = parseJson<unknown>(value);
+  const result = parsedOutputSchema.safeParse(parsed);
+  return result.success ? result.data : null;
+}
+
+export function parseUsage(value: string | null | undefined): ParsedUsage | null {
+  const parsed = parseJson<unknown>(value);
+  const result = parsedUsageSchema.safeParse(parsed);
+  return result.success ? result.data : null;
 }
 
 export function safeParseValue(value: unknown): unknown {
@@ -191,7 +220,7 @@ export function toolResultsFromContent(
 export function firstUserMessage(steps: Step[], maxChars = 80): string {
   const firstStep = steps[0];
   if (!firstStep) return 'Empty run';
-  const input = parseJson<ParsedInput>(firstStep.input);
+  const input = parseInput(firstStep.input);
   const prompt = input?.prompt;
   if (!Array.isArray(prompt)) return 'No user message';
   const userMsg = prompt.find((message) => message.role === 'user');
@@ -245,7 +274,7 @@ export function usageForStep(step: Step): {
   raw?: unknown;
   full: ParsedUsage | null;
 } {
-  const usage = parseJson<ParsedUsage>(step.usage);
+  const usage = parseUsage(step.usage);
   return {
     input: getInputTokenBreakdown(usage?.inputTokens),
     output: getOutputTokenBreakdown(usage?.outputTokens),
@@ -344,7 +373,7 @@ export function toolResultsFromNextStep(
 ): ToolResultContentPart[] {
   const index = siblingSteps.findIndex((candidate) => candidate.id === step.id);
   const nextStep = index >= 0 ? siblingSteps[index + 1] : undefined;
-  const input = nextStep ? parseJson<ParsedInput>(nextStep.input) : null;
+  const input = nextStep ? parseInput(nextStep.input) : null;
   return (
     input?.prompt
       ?.filter((message) => message.role === 'tool')
@@ -381,8 +410,8 @@ export function stepSummary(
   step: Step,
   siblingSteps: Step[] = [],
 ): Record<string, unknown> {
-  const input = parseJson<ParsedInput>(step.input);
-  const output = parseJson<ParsedOutput>(step.output);
+  const input = parseInput(step.input);
+  const output = parseOutput(step.output);
   const usage = usageForStep(step);
   const finishReason =
     typeof output?.finishReason === 'string'
@@ -515,7 +544,7 @@ function serializeChildRun(child: ChildRun): Record<string, unknown> {
 }
 
 export function availableToolsFromStep(step: Step): ToolDefinition[] {
-  const input = parseJson<ParsedInput>(step.input);
+  const input = parseInput(step.input);
   return input?.tools ?? [];
 }
 
@@ -529,7 +558,7 @@ export function allToolDataForStep(
     ToolResultContentPart & { sourceStepId: string; sourceStepNumber: number }
   >;
 } {
-  const output = parseJson<ParsedOutput>(step.output);
+  const output = parseOutput(step.output);
   const calls = getOutputParts(output).toolCalls.map((call) => ({
     ...call,
     stepId: step.id,
@@ -555,7 +584,7 @@ export function getMessagesForRun(
 ): Array<Record<string, unknown>> {
   const steps = stepsForRun(db, runId);
   const messages: Array<Record<string, unknown>> = steps.flatMap((step) => {
-    const input = parseJson<ParsedInput>(step.input);
+    const input = parseInput(step.input);
     return (input?.prompt ?? []).map((message, index) => ({
       stepId: step.id,
       stepNumber: step.step_number,
@@ -623,7 +652,7 @@ export function outputForStep(
   } = {},
 ): Record<string, unknown> {
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
-  const output = parseJson<ParsedOutput>(step.output);
+  const output = parseOutput(step.output);
   if (!output) return { stepId: step.id, output: null, error: step.error };
   const parts = getOutputParts(output);
   const results = toolResultsFromNextStep(step, siblingSteps);
@@ -839,7 +868,7 @@ export function buildTraceSpans(runDetail: RunDetail): TraceSpan[] {
       const stepStartMs = new Date(step.started_at).getTime() - traceStart;
       const durationMs = step.duration_ms ?? 0;
       const usage = usageForStep(step);
-      const output = parseJson<ParsedOutput>(step.output);
+      const output = parseOutput(step.output);
       const parts = getOutputParts(output);
       const label = functionId || step.model_id || 'LLM call';
       spans.push({
