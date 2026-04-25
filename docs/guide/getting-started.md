@@ -2,7 +2,17 @@
 
 `aisdk-dt` lets your coding agent inspect AI SDK DevTools `generations.json` files without loading huge prompts, raw responses, or stream chunks into context.
 
-## 1. Install The CLI
+## 1. Enable AI SDK DevTools
+
+`aisdk-dt` depends on the `generations.json` file created by AI SDK DevTools.
+
+If you have not set this up yet, use the official guide first:
+
+- https://ai-sdk.dev/docs/ai-sdk-core/devtools
+
+After enabling DevTools, run your app and confirm `.devtools/generations.json` exists (or identify your configured output path).
+
+## 2. Install The CLI
 
 Install the `aisdk-dt` binary globally:
 
@@ -26,7 +36,7 @@ pnpm add -D aisdk-dt
 
 `aisdk-dt` requires Node.js 20 or newer.
 
-## 2. Install The Agent Skill
+## 3. Install The Agent Skill
 
 Install the bundled skill with skills.sh:
 
@@ -42,7 +52,7 @@ Use $aisdk-dt-inspector to inspect .devtools/generations.json and summarize the 
 
 The skill tells agents to prefer bounded semantic commands before raw payloads.
 
-## 3. Point It At A DevTools File
+## 4. Point It At A DevTools File
 
 From the app that produced the DevTools file, `aisdk-dt` defaults to:
 
@@ -56,7 +66,7 @@ From another directory, pass an explicit path:
 aisdk-dt runs --file /absolute/path/to/generations.json
 ```
 
-## 4. First Agent Workflow
+## 5. First Agent Workflow
 
 Start with recent runs:
 
@@ -82,7 +92,7 @@ Inspect a step output:
 aisdk-dt output <stepId> --max-chars 800 --file <path>
 ```
 
-## 5. When To Use Raw Payloads
+## 6. When To Use Raw Payloads
 
 Use raw payloads when the bounded message, output, tool, and usage commands do not answer the question.
 
