@@ -194,3 +194,9 @@ pnpm install
 pnpm run test
 pnpm run build
 ```
+
+## Project
+
+- [Contributing](./CONTRIBUTING.md)
+- [Security](./SECURITY.md)
+- [License](./LICENSE)
