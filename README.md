@@ -70,6 +70,22 @@ Use $aisdk-dt-inspector to inspect this generations.json file and summarize the 
 
 ## Quick Start
 
+For most workflows, start with the skill and your preferred coding LLM agent instead of running raw CLI commands yourself.
+
+1. Install the `aisdk-dt-inspector` skill:
+
+   ```bash
+   npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
+   ```
+
+2. Point your agent at the `generations.json` file and ask it to inspect or summarize a run:
+
+   ```text
+   Use $aisdk-dt-inspector to inspect .devtools/generations.json and summarize failed runs from today.
+   ```
+
+3. Use direct CLI commands when you need manual or scripted inspection.
+
 Point the CLI at a DevTools database:
 
 ```bash
