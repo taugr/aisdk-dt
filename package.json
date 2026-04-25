@@ -3,6 +3,23 @@
   "version": "0.1.0",
   "description": "CLI for querying AI SDK DevTools generations.json files.",
   "license": "MIT",
+  "homepage": "https://github.com/tom-auger/aisdk-dt#readme",
+  "bugs": {
+    "url": "https://github.com/tom-auger/aisdk-dt/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tom-auger/aisdk-dt.git"
+  },
+  "author": "Tom Auger <tom@tau.gr>",
+  "keywords": [
+    "ai-sdk",
+    "ai-sdk-devtools",
+    "devtools",
+    "generations",
+    "cli",
+    "inspection"
+  ],
   "bin": {
     "aisdk-dt": "./dist/cli.js"
   },
