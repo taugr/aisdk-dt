@@ -42,6 +42,12 @@ This repo includes an agent skill in `.agents/skills/aisdk-dt-inspector/`.
 
 Use it when an agent needs to inspect large AI SDK DevTools generation logs without pulling full prompts, raw provider payloads, or streamed chunks into context.
 
+Install it with skills.sh:
+
+```bash
+npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
+```
+
 Example:
 
 ```text
