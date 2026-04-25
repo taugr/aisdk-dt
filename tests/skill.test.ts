@@ -2,9 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const skillPath = path.resolve(
-  '.agents/skills/aisdk-dt-inspector/SKILL.md',
-);
+const skillPath = path.resolve('.agents/skills/aisdk-dt-inspector/SKILL.md');
 
 describe('repo-local skill', () => {
   it('documents the safe agent workflow without installing to personal skills', () => {

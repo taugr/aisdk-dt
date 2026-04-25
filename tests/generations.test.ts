@@ -316,7 +316,11 @@ describe('generations queries', () => {
   it('validates generations database shape when reading from disk', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aisdk-dt-'));
     const badFile = path.join(tmpDir, 'generations.json');
-    fs.writeFileSync(badFile, JSON.stringify({ runs: [{}], steps: [] }), 'utf8');
+    fs.writeFileSync(
+      badFile,
+      JSON.stringify({ runs: [{}], steps: [] }),
+      'utf8',
+    );
 
     expect(() => readDatabase(badFile)).toThrow('Invalid generations database');
   });

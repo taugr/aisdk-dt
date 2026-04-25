@@ -59,7 +59,9 @@ export function parseJson<T = unknown>(
   }
 }
 
-export function parseInput(value: string | null | undefined): ParsedInput | null {
+export function parseInput(
+  value: string | null | undefined,
+): ParsedInput | null {
   const parsed = parseJson<unknown>(value);
   const result = parsedInputSchema.safeParse(parsed);
   return result.success ? result.data : null;
@@ -73,7 +75,9 @@ export function parseOutput(
   return result.success ? result.data : null;
 }
 
-export function parseUsage(value: string | null | undefined): ParsedUsage | null {
+export function parseUsage(
+  value: string | null | undefined,
+): ParsedUsage | null {
   const parsed = parseJson<unknown>(value);
   const result = parsedUsageSchema.safeParse(parsed);
   return result.success ? result.data : null;

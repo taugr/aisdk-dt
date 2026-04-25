@@ -38,7 +38,9 @@ const messages = [
 describe('AI SDK type compatibility checks', () => {
   it('accepts AI SDK-typed tool call and result parts', () => {
     expect(toolCallContentPartSchema.safeParse(toolCall).success).toBe(true);
-    expect(toolResultContentPartSchema.safeParse(toolResult).success).toBe(true);
+    expect(toolResultContentPartSchema.safeParse(toolResult).success).toBe(
+      true,
+    );
   });
 
   it('accepts AI SDK-typed model messages used by the CLI prompt parser', () => {
