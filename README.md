@@ -1,6 +1,10 @@
 # aisdk-dt
 
-`aisdk-dt` is a CLI for querying AI SDK DevTools `generations.json` files so your coding agent can inspect Vercel AI SDK requests, responses, tool calls, and usage without flooding context.
+<p align="center">
+  <img src="./docs/public/logo.svg" alt="aisdk-dt logo" width="160" />
+  <br />
+  CLI for querying AI SDK DevTools <code>generations.json</code> files so your coding agent can inspect Vercel AI SDK requests, responses, tool calls, and usage without flooding context.
+</p>
 
 > `aisdk-dt` is an independent package and is not affiliated with, endorsed by, or maintained by Vercel.
 
