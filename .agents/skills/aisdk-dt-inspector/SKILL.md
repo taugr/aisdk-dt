@@ -1,9 +1,9 @@
 ---
-name: aisdk-devtools-generations
+name: aisdk-dt-inspector
 description: Use when inspecting or querying AI SDK DevTools generations.json files, large generation logs, transcripts, tool calls, raw request/response payloads, raw chunks, provider options, or token usage through the aisdk-dt CLI.
 ---
 
-# AI SDK DevTools Generations
+# AI SDK DevTools Inspector
 
 Use `aisdk-dt` to inspect `generations.json` without pulling huge prompts,
 provider payloads, or raw chunks into context.

@@ -3,14 +3,14 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const skillPath = path.resolve(
-  '.agents/skills/aisdk-devtools-generations/SKILL.md',
+  '.agents/skills/aisdk-dt-inspector/SKILL.md',
 );
 
 describe('repo-local skill', () => {
   it('documents the safe agent workflow without installing to personal skills', () => {
     const skill = fs.readFileSync(skillPath, 'utf8');
 
-    expect(skill).toContain('name: aisdk-devtools-generations');
+    expect(skill).toContain('name: aisdk-dt-inspector');
     expect(skill).toContain('aisdk-dt runs --limit 10 --file <path>');
     expect(skill).toContain(
       'Prefer `messages`, `steps`, `output`, `tools`, and `usage` before `raw`.',

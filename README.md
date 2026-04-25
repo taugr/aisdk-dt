@@ -2,6 +2,8 @@
 
 `aisdk-dt` is a CLI for querying AI SDK DevTools `generations.json` files so your coding agent can inspect Vercel AI SDK requests, responses, tool calls, and usage without flooding context.
 
+> `aisdk-dt` is an independent package and is not affiliated with, endorsed by, or maintained by Vercel.
+
 ## Features
 
 - 🔎 List, filter, and inspect AI SDK DevTools runs
@@ -12,10 +14,11 @@
 
 ## Installation
 
-Install the package and use the `aisdk-dt` binary:
+Install the `aisdk-dt` binary globally:
 
 ```bash
-pnpm add -D aisdk-dt
+pnpm add -g aisdk-dt
+npm install -g aisdk-dt
 ```
 
 Or run it without installing:
@@ -25,18 +28,24 @@ pnpx aisdk-dt runs --file .devtools/generations.json
 npx aisdk-dt runs --file .devtools/generations.json
 ```
 
+Or install it locally as a dev dependency:
+
+```bash
+pnpm add -D aisdk-dt
+```
+
 This package requires Node.js 20 or newer.
 
 ## AI Skills
 
-This repo includes an agent skill in `.agents/skills/aisdk-devtools-generations/`.
+This repo includes an agent skill in `.agents/skills/aisdk-dt-inspector/`.
 
 Use it when an agent needs to inspect large AI SDK DevTools generation logs without pulling full prompts, raw provider payloads, or streamed chunks into context.
 
 Example:
 
 ```text
-Use $aisdk-devtools-generations to inspect this generations.json file and summarize the failed run.
+Use $aisdk-dt-inspector to inspect this generations.json file and summarize the failed run.
 ```
 
 ## Quick Start
