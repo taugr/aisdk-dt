@@ -1,5 +1,5 @@
 {
-  "name": "aisdk-devtools-cli",
+  "name": "aisdk-dt",
   "version": "0.1.0",
   "description": "CLI for querying AI SDK DevTools generations.json files.",
   "bin": {
