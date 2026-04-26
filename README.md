@@ -40,7 +40,7 @@ pnpm add -D aisdk-dt
 
 This package requires Node.js 20 or newer.
 
-## Set Up AI SDK DevTools First
+## Set Up AI SDK DevTools
 
 `aisdk-dt` reads the DevTools `generations.json` file produced by the Vercel AI SDK.
 
@@ -49,24 +49,6 @@ If you have not enabled DevTools yet, follow the official setup guide first:
 - https://ai-sdk.dev/docs/ai-sdk-core/devtools
 
 After setup, run your app once and confirm a `.devtools/generations.json` file exists in your project (or note the custom output path you configured).
-
-## AI Skills
-
-This repo includes an agent skill in `.agents/skills/aisdk-dt-inspector/`.
-
-Use it when an agent needs to inspect large AI SDK DevTools generation logs without pulling full prompts, raw provider payloads, or streamed chunks into context.
-
-Install it with skills.sh:
-
-```bash
-npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
-```
-
-Example:
-
-```text
-Use $aisdk-dt-inspector to inspect this generations.json file and summarize the failed run.
-```
 
 ## Quick Start
 
@@ -119,6 +101,10 @@ aisdk-dt usage <runOrStepId> --file .devtools/generations.json
 ```
 
 If you run commands from the project that produced the file, `--file` defaults to `.devtools/generations.json`.
+
+## AI Skills
+
+This repo includes an agent skill in `.agents/skills/aisdk-dt-inspector/` for safe inspection of large AI SDK DevTools generation logs without pulling full prompts, raw provider payloads, or streamed chunks into context.
 
 ## Command Overview
 
