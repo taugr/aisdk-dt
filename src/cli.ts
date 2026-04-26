@@ -673,7 +673,7 @@ function renderToolsText(obj: Record<string, unknown>): string {
   for (const result of obj.results as Array<Record<string, unknown>>) {
     const relationship =
       result.relationship === 'replayed-context'
-        ? `replayed-context originalCallStep=${result.originalCallStepNumber ?? ''} replayedFromStep=${result.replayedFromStepNumber ?? result.sourceStepNumber ?? ''} observedStep=${result.observedInStepNumber ?? ''}`
+        ? `replayed-context originalCallStep=${result.originalCallStepNumber ?? 'outside-run'} replayedFromStep=${result.replayedFromStepNumber ?? result.sourceStepNumber ?? ''} observedStep=${result.observedInStepNumber ?? ''}`
         : `paired-next-step originalCallStep=${result.originalCallStepNumber ?? result.sourceStepNumber ?? ''} observedStep=${result.observedInStepNumber ?? ''}`;
     lines.push(
       `result ${relationship} ${result.toolName ?? ''} id=${result.toolCallId ?? ''} output=${truncateRendered(result.output)}`,
