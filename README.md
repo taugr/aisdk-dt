@@ -54,19 +54,23 @@ After setup, run your app once and confirm a `.devtools/generations.json` file e
 
 For most workflows, start with the skill and your preferred coding LLM agent instead of running raw CLI commands yourself.
 
-1. Install the `aisdk-dt-inspector` skill:
+This repo includes an agent skill in `.agents/skills/aisdk-dt-inspector/` for safe inspection of large AI SDK DevTools generation logs without pulling full prompts, raw provider payloads, or streamed chunks into context.
 
-   ```bash
-   npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
-   ```
+Install the `aisdk-dt-inspector` skill:
 
-2. Point your agent at the `generations.json` file and ask it to inspect or summarize a run:
+```bash
+npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
+```
 
-   ```text
-   Use $aisdk-dt-inspector to inspect .devtools/generations.json and summarize failed runs from today.
-   ```
+Point your agent at the `generations.json` file and ask it to inspect or summarize a run:
 
-3. Use direct CLI commands when you need manual or scripted inspection.
+```text
+Use $aisdk-dt-inspector to inspect .devtools/generations.json and summarize failed runs from today.
+```
+
+## Direct CLI Usage
+
+Use direct CLI commands when you need manual or scripted inspection.
 
 Point the CLI at a DevTools database:
 
@@ -107,10 +111,6 @@ If you run commands from the project that produced the file, `--file` defaults t
 Want a concrete, end-to-end demo? Start with this first example:
 
 - [`examples/simple-chatbot`](./examples/simple-chatbot/README.md): a Next.js chatbot with AI SDK tool calls, AI SDK DevTools capture, and `aisdk-dt` inspection commands.
-
-## AI Skills
-
-This repo includes an agent skill in `.agents/skills/aisdk-dt-inspector/` for safe inspection of large AI SDK DevTools generation logs without pulling full prompts, raw provider payloads, or streamed chunks into context.
 
 ## Command Overview
 
