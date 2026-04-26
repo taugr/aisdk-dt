@@ -11,7 +11,7 @@
     "typeAware": true,
     "typeCheck": true
   },
-  "ignorePatterns": [],
+  "ignorePatterns": ["docs/.vitepress/cache/**"],
   "rules": {
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error"

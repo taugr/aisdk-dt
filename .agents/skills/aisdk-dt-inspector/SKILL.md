@@ -10,23 +10,36 @@ provider payloads, or raw chunks into context.
 
 ## Default Workflow
 
-1. Start by finding candidate runs.
+1. Start with the default LLM-oriented inspection view. With no subcommand,
+   `aisdk-dt` inspects the latest root run and includes recent messages, tool
+   calls/results, usage, cache usage, step status, timeline, and error
+   diagnostics with bounded previews.
+
+   ```bash
+   aisdk-dt --file <path>
+   aisdk-dt inspect --latest --file <path>
+   ```
+
+2. If the latest run is not the one you need, find candidate runs and inspect
+   one explicitly.
 
    ```bash
    aisdk-dt runs --limit 10 --file <path>
+   aisdk-dt inspect <runId> --file <path>
    ```
 
-2. Prefer bounded semantic queries before raw payloads.
+3. Prefer bounded semantic drill-downs before raw payloads.
 
    ```bash
-   aisdk-dt messages <runId> --limit 6 --max-chars 500 --file <path>
+   aisdk-dt messages <runId> --limit 12 --max-chars 500 --file <path>
    aisdk-dt steps <runId> --file <path>
    aisdk-dt output <stepId> --max-chars 800 --file <path>
    aisdk-dt tools <runOrStepId> --file <path>
    aisdk-dt usage <runOrStepId> --file <path>
+   aisdk-dt events <stepId> --last 20 --file <path>
    ```
 
-3. Use raw data only when the semantic commands do not answer the question.
+4. Use raw data only when the semantic commands do not answer the question.
 
    ```bash
    aisdk-dt raw <stepId> --request --json-path 'model' --file <path>
@@ -35,7 +48,8 @@ provider payloads, or raw chunks into context.
 
 ## Guardrails
 
-- Prefer `messages`, `steps`, `output`, `tools`, and `usage` before `raw`.
+- Prefer `inspect`, `messages`, `steps`, `output`, `tools`, `usage`, and
+  `events` before `raw`.
 - Use `--max-chars` whenever output could include prompts, reasoning, tool
   arguments, tool results, raw requests, raw responses, or raw chunks.
 - Use `raw --json-path` before `raw --full`; quote JSON paths that contain
@@ -49,11 +63,15 @@ provider payloads, or raw chunks into context.
 
 ## Command Selection
 
+- Need what happened most recently: `aisdk-dt --file <path>`.
 - Need recent activity: `runs`.
-- Need what happened in a run: `messages`, then `steps`.
+- Need what happened in a run: `inspect <runId>`, then `messages`/`steps`.
 - Need the assistant response or object output: `output`.
-- Need tool definitions, calls, arguments, or results: `tools`.
+- Need actual tool calls, arguments, or results: `tools`.
+- Need available tool definitions: `tools --available` or
+  `tools --available-only`.
 - Need token/caching details: `usage`.
+- Need stream event summaries for failed/hung calls: `events`.
 - Need provider wire payloads or stream chunks: `raw` with a narrow
   `--json-path`.
 - Need timing/nested call structure: `timeline`.

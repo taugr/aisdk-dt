@@ -2,17 +2,35 @@
 
 `generations.json` can contain sensitive prompts, raw provider payloads, tool arguments, tool results, response chunks, and reasoning-like content. `aisdk-dt` is designed to help agents inspect that data deliberately.
 
-## Start Semantic
+## Start With Inspection
+
+The default command is designed for coding agents and LLM context. It inspects
+the latest root run with bounded previews of recent messages, tool calls,
+tool results, step status, usage, cache usage, timeline data, and diagnostics.
+
+```sh
+aisdk-dt --file <path>
+aisdk-dt inspect --latest --file <path>
+```
+
+Inspect a specific run when needed:
+
+```sh
+aisdk-dt inspect <runId> --file <path>
+```
+
+## Drill Down Semantically
 
 Prefer semantic commands first:
 
 ```sh
 aisdk-dt runs --limit 10 --file <path>
-aisdk-dt messages <runId> --limit 6 --max-chars 500 --file <path>
+aisdk-dt messages <runId> --limit 12 --max-chars 500 --file <path>
 aisdk-dt steps <runId> --file <path>
 aisdk-dt output <stepId> --max-chars 800 --file <path>
 aisdk-dt tools <runOrStepId> --file <path>
 aisdk-dt usage <runOrStepId> --file <path>
+aisdk-dt events <stepId> --last 20 --file <path>
 ```
 
 These commands summarize the data without dumping every raw field.
@@ -47,7 +65,7 @@ Use `--full` only for deliberate local inspection.
 When the agent is not running from the app that produced the DevTools file, pass an absolute path:
 
 ```sh
-aisdk-dt runs --file /absolute/path/to/.devtools/generations.json
+aisdk-dt --file /absolute/path/to/.devtools/generations.json
 ```
 
 This avoids accidentally inspecting a different repo's `.devtools/generations.json`.

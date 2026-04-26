@@ -2,6 +2,21 @@
 
 These workflows are intended for coding agents inspecting an AI SDK DevTools `generations.json` file.
 
+## Inspect What Just Happened
+
+The default command inspects the latest root run with recent messages, tool
+calls/results, usage, cache usage, step status, timeline, and diagnostics.
+
+```sh
+aisdk-dt --file <path>
+```
+
+Inspect a specific run:
+
+```sh
+aisdk-dt inspect <runId> --file <path>
+```
+
 ## Find Recent Runs
 
 ```sh
@@ -24,7 +39,7 @@ aisdk-dt runs --in-progress --file <path>
 ## Inspect One Run
 
 ```sh
-aisdk-dt run <runId> --file <path>
+aisdk-dt inspect <runId> --file <path>
 ```
 
 Include nested child runs and trace spans:
@@ -36,7 +51,7 @@ aisdk-dt run <runId> --include-children --timeline --file <path>
 ## Read The Prompt Transcript
 
 ```sh
-aisdk-dt messages <runId> --limit 6 --max-chars 500 --file <path>
+aisdk-dt messages <runId> --limit 12 --max-chars 500 --file <path>
 ```
 
 Filter by role:
@@ -72,6 +87,13 @@ aisdk-dt output <stepId> --tools --max-chars 800 --file <path>
 aisdk-dt tools <runOrStepId> --file <path>
 ```
 
+Include available tool definitions:
+
+```sh
+aisdk-dt tools <runOrStepId> --available --file <path>
+aisdk-dt tools <runOrStepId> --available-only --file <path>
+```
+
 Filter to one tool call:
 
 ```sh
@@ -85,6 +107,15 @@ aisdk-dt usage <runOrStepId> --file <path>
 ```
 
 Use this when debugging cost, cache behavior, or unexpectedly large prompts.
+
+## Inspect Stream Events
+
+```sh
+aisdk-dt events <stepId> --last 20 --file <path>
+aisdk-dt events <stepId> --chunks --type response.created --file <path>
+```
+
+Use event summaries for aborted or hung streams before reaching for raw payloads.
 
 ## Query Raw Payloads
 

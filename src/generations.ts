@@ -151,6 +151,18 @@ export function findStep(db: Database, stepId: string): Step | undefined {
   return db.steps.find((step) => step.id === stepId);
 }
 
+export function findLatestRun(
+  db: Database,
+  options: { includeChildren?: boolean } = {},
+): Run | undefined {
+  return db.runs
+    .filter((run) => options.includeChildren || !run.parent_run_id)
+    .sort(
+      (a, b) =>
+        new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+    )[0];
+}
+
 export function buildChildRuns(db: Database, parentRunId: string): ChildRun[] {
   const children = db.runs
     .filter((run) => run.parent_run_id === parentRunId)
@@ -336,6 +348,11 @@ export function totalsForSteps(steps: Step[]): {
     },
     { durationMs: 0, input: { total: 0 }, output: { total: 0 } },
   );
+}
+
+export function cacheHitRatio(input: InputTokenBreakdown): number | null {
+  if (!input.total || input.cacheRead == null) return null;
+  return input.cacheRead / input.total;
 }
 
 export function getOutputParts(output: ParsedOutput | null): {
@@ -535,6 +552,103 @@ export function runDetailSummary(
   };
 }
 
+export function inspectRun(
+  db: Database,
+  runId: string,
+  options: {
+    recentMessages?: number;
+    maxChars?: number;
+    includeEvents?: boolean;
+    eventLimit?: number;
+  } = {},
+): Record<string, unknown> {
+  const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
+  const detail = getRunDetail(db, runId);
+  const steps = detail.steps;
+  const totals = totalsForSteps(steps);
+  const runSummary = summarizeRun(db, detail.run, true);
+  const lastStep = steps[steps.length - 1];
+  const errorStep = [...steps].reverse().find((step) => step.error);
+  const status = detail.run.isInProgress
+    ? 'in-progress'
+    : errorStep
+      ? 'error'
+      : 'success';
+  const toolData = toolsForTarget(db, runId, { includeAvailable: false });
+  return {
+    run: {
+      id: detail.run.id,
+      startedAt: detail.run.started_at,
+      functionId: detail.run.function_id ?? null,
+      status,
+      error: errorStep?.error ?? null,
+      stepCount: steps.length,
+      durationMs: totals.durationMs,
+      models: runSummary.models,
+      providers: runSummary.providers,
+      firstMessage: runSummary.firstMessage,
+      childRunCount: runSummary.childRunCount,
+    },
+    usage: {
+      input: totals.input,
+      output: totals.output,
+      cacheHitRatio: cacheHitRatio(totals.input),
+    },
+    steps: steps.map((step) => {
+      const summary = stepSummary(step, steps);
+      return {
+        stepNumber: step.step_number,
+        stepId: step.id,
+        modelId: step.model_id,
+        provider: step.provider,
+        durationMs: step.duration_ms,
+        status:
+          step.duration_ms === null && !step.error
+            ? 'in-progress'
+            : step.error
+              ? 'error'
+              : 'complete',
+        error: step.error,
+        outputSummary: summary.outputSummary,
+        usage: summary.usage,
+      };
+    }),
+    recentMessages: getMessagesForRun(db, runId, {
+      limit: options.recentMessages ?? 12,
+      maxChars,
+      withUsage: true,
+    }),
+    tools: toolData,
+    timeline: buildTraceSpans(detail).map((span) => ({
+      kind: span.kind,
+      stepId: span.stepId,
+      label: span.label,
+      sublabel: span.sublabel,
+      startMs: span.startMs,
+      durationMs: span.durationMs,
+      tokens: span.tokens,
+      toolCallId: span.toolCallId,
+      isInProgress: span.isInProgress,
+    })),
+    diagnostics: {
+      lastStepId: lastStep?.id ?? null,
+      failureStepId: errorStep?.id ?? null,
+      failureStepNumber: errorStep?.step_number ?? null,
+      likelyFailurePoint: errorStep
+        ? `step ${errorStep.step_number}: ${errorStep.error}`
+        : null,
+      ...(options.includeEvents && errorStep
+        ? {
+            recentEvents: eventsForStep(errorStep, {
+              limit: options.eventLimit ?? 12,
+              maxChars,
+            }),
+          }
+        : {}),
+    },
+  };
+}
+
 function serializeChildRun(child: ChildRun): Record<string, unknown> {
   const totals = totalsForSteps(child.steps);
   return {
@@ -584,16 +698,27 @@ export function getMessagesForRun(
     role?: string;
     parts?: string;
     maxChars?: number;
+    withUsage?: boolean;
   } = {},
 ): Array<Record<string, unknown>> {
   const steps = stepsForRun(db, runId);
   const messages: Array<Record<string, unknown>> = steps.flatMap((step) => {
     const input = parseInput(step.input);
+    const usage = usageForStep(step);
     return (input?.prompt ?? []).map((message, index) => ({
       stepId: step.id,
       stepNumber: step.step_number,
       index,
       ...normalizeMessage(message, options.maxChars ?? DEFAULT_MAX_CHARS),
+      ...(options.withUsage
+        ? {
+            stepUsage: {
+              input: usage.input,
+              output: usage.output,
+              cacheHitRatio: cacheHitRatio(usage.input),
+            },
+          }
+        : {}),
     }));
   });
   const filtered = messages.filter((message) => {
@@ -742,7 +867,11 @@ export function usageForTarget(
 export function toolsForTarget(
   db: Database,
   targetId: string,
-  options: { toolCallId?: string } = {},
+  options: {
+    toolCallId?: string;
+    includeAvailable?: boolean;
+    availableOnly?: boolean;
+  } = {},
 ): Record<string, unknown> {
   const step = findStep(db, targetId);
   const steps = step ? [step] : stepsForRun(db, targetId);
@@ -769,15 +898,69 @@ export function toolsForTarget(
   return {
     targetType: step ? 'step' : 'run',
     targetId,
-    available,
-    calls: filteredCalls,
-    results: filteredResults,
+    calls: options.availableOnly ? [] : filteredCalls,
+    results: options.availableOnly ? [] : filteredResults,
+    ...(options.includeAvailable || options.availableOnly ? { available } : {}),
     summary: {
       availableToolCount: available.length,
-      toolCallCount: filteredCalls.length,
-      toolResultCount: filteredResults.length,
+      toolCallCount: options.availableOnly ? 0 : filteredCalls.length,
+      toolResultCount: options.availableOnly ? 0 : filteredResults.length,
       counts,
     },
+  };
+}
+
+export function eventsForStep(
+  step: Step,
+  options: {
+    source?: 'response' | 'chunks';
+    limit?: number;
+    type?: string;
+    maxChars?: number;
+  } = {},
+): Record<string, unknown> {
+  const source = options.source ?? 'response';
+  const rawValue = source === 'chunks' ? step.raw_chunks : step.raw_response;
+  const parsed = parseJson(rawValue);
+  const events = Array.isArray(parsed)
+    ? parsed
+    : parsed == null
+      ? []
+      : [parsed];
+  const filtered =
+    typeof options.type === 'string'
+      ? events.filter(
+          (event) =>
+            typeof event === 'object' &&
+            event != null &&
+            String((event as Record<string, unknown>).type) === options.type,
+        )
+      : events;
+  const selected =
+    typeof options.limit === 'number'
+      ? filtered.slice(-options.limit)
+      : filtered;
+  const typeCounts = events.reduce<Record<string, number>>((acc, event) => {
+    const type =
+      typeof event === 'object' && event != null
+        ? String((event as Record<string, unknown>).type ?? 'unknown')
+        : 'unknown';
+    acc[type] = (acc[type] ?? 0) + 1;
+    return acc;
+  }, {});
+  return {
+    stepId: step.id,
+    source,
+    totalEventCount: events.length,
+    filteredEventCount: filtered.length,
+    typeCounts,
+    events: selected.map((event, index) => ({
+      index:
+        typeof options.limit === 'number'
+          ? filtered.length - selected.length + index
+          : index,
+      value: preview(event, options.maxChars ?? DEFAULT_MAX_CHARS),
+    })),
   };
 }
 

@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import {
-  findRun,
   findStep,
+  findLatestRun,
   getMessagesForRun,
   getRunDetail,
+  inspectRun,
+  eventsForStep,
   outputForStep,
   rawForStep,
   readDatabase,
@@ -32,14 +34,62 @@ const program = new Command();
 program
   .name('aisdk-dt')
   .description(
-    'Query AI SDK DevTools generations.json files without flooding context.',
+    'Inspect AI SDK DevTools generations.json files for LLM-friendly debugging.',
   )
   .option(
     '--file <path>',
     'Path to generations.json. Defaults to .devtools/generations.json.',
   )
   .option('--pretty', 'Pretty-print JSON output.')
-  .option('--text', 'Render a compact human-readable output.');
+  .option('--text', 'Render a compact human-readable output.')
+  .action(() => {
+    const db = loadDb();
+    const run = findLatestRun(db);
+    if (!run) fail('No root runs found.');
+    writeOutput(
+      inspectRun(db, run.id, {
+        recentMessages: 12,
+        maxChars: 500,
+        includeEvents: true,
+      }),
+    );
+  });
+
+program
+  .command('inspect [runId]')
+  .alias('recent')
+  .description(
+    'Inspect a run with recent messages, tools, usage, and timeline.',
+  )
+  .option('--latest', 'Inspect the latest root run.')
+  .option('--all', 'Allow --latest to select child runs.')
+  .option(
+    '--messages <number>',
+    'Number of recent messages to include.',
+    parseIntOption,
+    12,
+  )
+  .option(
+    '--max-chars <number>',
+    'Maximum preview characters.',
+    parseIntOption,
+    500,
+  )
+  .option('--events', 'Include recent raw stream events for errored runs.')
+  .action((runId, options) => {
+    const db = loadDb();
+    const resolvedRunId = resolveRunId(db, runId, {
+      latest: Boolean(options.latest) || !runId,
+      includeChildren: Boolean(options.all),
+    });
+    writeOutput(
+      inspectRun(db, resolvedRunId, {
+        recentMessages: options.messages,
+        maxChars: options.maxChars,
+        includeEvents: Boolean(options.events),
+      }),
+    );
+  });
 
 program
   .command('runs')
@@ -73,8 +123,10 @@ program
   });
 
 program
-  .command('run <runId>')
+  .command('run [runId]')
   .description('Show compact run detail.')
+  .option('--latest', 'Show the latest root run.')
+  .option('--all', 'Allow --latest to select child runs.')
   .option('--include-children', 'Include nested child runs.')
   .option('--timeline', 'Include timeline spans.')
   .option(
@@ -85,8 +137,12 @@ program
   )
   .action((runId, options) => {
     const db = loadDb();
+    const resolvedRunId = resolveRunId(db, runId, {
+      latest: Boolean(options.latest),
+      includeChildren: Boolean(options.all),
+    });
     const result = limitStrings(
-      runDetailSummary(db, runId, {
+      runDetailSummary(db, resolvedRunId, {
         includeChildren: Boolean(options.includeChildren),
         timeline: Boolean(options.timeline),
       }),
@@ -96,15 +152,19 @@ program
   });
 
 program
-  .command('steps <runId>')
+  .command('steps [runId]')
   .description('List collapsed step-card summaries for a run.')
-  .action((runId) => {
+  .option('--latest', 'Show steps for the latest root run.')
+  .option('--all', 'Allow --latest to select child runs.')
+  .action((runId, options) => {
     const db = loadDb();
-    const run = findRun(db, runId);
-    if (!run) fail(`Run not found: ${runId}`);
-    const steps = stepsForRun(db, runId);
+    const resolvedRunId = resolveRunId(db, runId, {
+      latest: Boolean(options.latest),
+      includeChildren: Boolean(options.all),
+    });
+    const steps = stepsForRun(db, resolvedRunId);
     writeOutput({
-      runId,
+      runId: resolvedRunId,
       steps: steps.map((step) => stepSummary(step, steps)),
     });
   });
@@ -177,14 +237,19 @@ program
   });
 
 program
-  .command('messages <runId>')
-  .description('Extract bounded prompt transcript messages.')
-  .option('--limit <number>', 'Number of latest messages.', parseIntOption)
+  .command('messages [runId]')
+  .description(
+    'Extract recent bounded transcript messages with usage metadata.',
+  )
+  .option('--latest', 'Show messages for the latest root run.')
+  .option('--all', 'Allow --latest to select child runs.')
+  .option('--limit <number>', 'Number of latest messages.', parseIntOption, 12)
   .option('--role <role>', 'Filter by role: user, assistant, system, or tool.')
   .option(
     '--parts <parts>',
     'Comma-separated parts: text,reasoning,tool-calls,tool-results.',
   )
+  .option('--no-usage', 'Omit per-step usage from messages.')
   .option(
     '--max-chars <number>',
     'Maximum preview characters.',
@@ -193,14 +258,18 @@ program
   )
   .action((runId, options) => {
     const db = loadDb();
-    if (!findRun(db, runId)) fail(`Run not found: ${runId}`);
+    const resolvedRunId = resolveRunId(db, runId, {
+      latest: Boolean(options.latest) || !runId,
+      includeChildren: Boolean(options.all),
+    });
     writeOutput({
-      runId,
-      messages: getMessagesForRun(db, runId, {
+      runId: resolvedRunId,
+      messages: getMessagesForRun(db, resolvedRunId, {
         limit: options.limit,
         role: options.role,
         parts: options.parts,
         maxChars: options.maxChars,
+        withUsage: Boolean(options.usage),
       }),
     });
   });
@@ -237,11 +306,15 @@ program
   });
 
 program
-  .command('tools <targetId>')
+  .command('tools [targetId]')
   .description(
     'Query available tools, tool calls, and tool results for a run or step.',
   )
+  .option('--latest', 'Show tools for the latest root run.')
+  .option('--all', 'Allow --latest to select child runs.')
   .option('--tool-call-id <id>', 'Filter by toolCallId.')
+  .option('--available', 'Include available tool definitions.')
+  .option('--available-only', 'Show only available tool definitions.')
   .option(
     '--max-chars <number>',
     'Maximum preview characters.',
@@ -250,9 +323,21 @@ program
   )
   .option('--full', 'Emit complete selected data.')
   .action((targetId, options) => {
+    const db = loadDb();
+    const resolvedTargetId =
+      Boolean(options.latest) || !targetId
+        ? resolveRunId(db, targetId, {
+            latest: true,
+            includeChildren: Boolean(options.all),
+          })
+        : targetId;
     writeOutput(
       limitMaybe(
-        toolsForTarget(loadDb(), targetId, { toolCallId: options.toolCallId }),
+        toolsForTarget(db, resolvedTargetId, {
+          toolCallId: options.toolCallId,
+          includeAvailable: Boolean(options.available),
+          availableOnly: Boolean(options.availableOnly),
+        }),
         options.maxChars,
         Boolean(options.full),
       ),
@@ -260,10 +345,20 @@ program
   });
 
 program
-  .command('usage <targetId>')
+  .command('usage [targetId]')
   .description('Show token usage for a run or step.')
-  .action((targetId) => {
-    writeOutput(usageForTarget(loadDb(), targetId));
+  .option('--latest', 'Show usage for the latest root run.')
+  .option('--all', 'Allow --latest to select child runs.')
+  .action((targetId, options) => {
+    const db = loadDb();
+    const resolvedTargetId =
+      Boolean(options.latest) || !targetId
+        ? resolveRunId(db, targetId, {
+            latest: true,
+            includeChildren: Boolean(options.all),
+          })
+        : targetId;
+    writeOutput(usageForTarget(db, resolvedTargetId));
   });
 
 program
@@ -301,12 +396,44 @@ program
   });
 
 program
-  .command('timeline <runId>')
+  .command('timeline [runId]')
   .description('Emit trace timeline spans for a run.')
-  .action((runId) => {
+  .option('--latest', 'Show timeline for the latest root run.')
+  .option('--all', 'Allow --latest to select child runs.')
+  .action((runId, options) => {
     const db = loadDb();
-    const detail = getRunDetail(db, runId);
-    writeOutput({ runId, spans: buildTraceSpans(detail) });
+    const resolvedRunId = resolveRunId(db, runId, {
+      latest: Boolean(options.latest) || !runId,
+      includeChildren: Boolean(options.all),
+    });
+    const detail = getRunDetail(db, resolvedRunId);
+    writeOutput({ runId: resolvedRunId, spans: buildTraceSpans(detail) });
+  });
+
+program
+  .command('events <stepId>')
+  .description('Summarize raw response or chunk stream events for a step.')
+  .option('--chunks', 'Inspect raw chunks instead of raw response events.')
+  .option('--type <type>', 'Filter events by type.')
+  .option('--last <number>', 'Number of last events.', parseIntOption, 20)
+  .option(
+    '--max-chars <number>',
+    'Maximum preview characters.',
+    parseIntOption,
+    500,
+  )
+  .action((stepId, options) => {
+    const db = loadDb();
+    const step = findStep(db, stepId);
+    if (!step) fail(`Step not found: ${stepId}`);
+    writeOutput(
+      eventsForStep(step, {
+        source: options.chunks ? 'chunks' : 'response',
+        type: options.type,
+        limit: options.last,
+        maxChars: options.maxChars,
+      }),
+    );
   });
 
 program.parse();
@@ -317,6 +444,29 @@ function loadDb() {
   } catch (error) {
     fail(error instanceof Error ? error.message : String(error));
   }
+}
+
+function resolveRunId(
+  db: ReturnType<typeof readDatabase>,
+  runId: string | undefined,
+  options: { latest?: boolean; includeChildren?: boolean },
+): string {
+  if (options.latest || !runId) {
+    const latest = findLatestRun(db, {
+      includeChildren: options.includeChildren,
+    });
+    if (!latest) fail('No runs found.');
+    return latest.id;
+  }
+  if (!findRunById(db, runId)) fail(`Run not found: ${runId}`);
+  return runId;
+}
+
+function findRunById(
+  db: ReturnType<typeof readDatabase>,
+  runId: string,
+): boolean {
+  return db.runs.some((run) => run.id === runId);
 }
 
 function getGlobals(): GlobalOptions {
@@ -355,6 +505,21 @@ function renderText(value: unknown): string {
         })
         .join('\n');
     }
+    if (obj.run && obj.recentMessages && obj.usage) {
+      return renderInspectionText(obj);
+    }
+    if (obj.targetType === 'run' && Array.isArray(obj.steps) && obj.usage) {
+      return renderUsageText(obj);
+    }
+    if (obj.targetType === 'step' && obj.usage) {
+      return renderUsageText(obj);
+    }
+    if (obj.calls && obj.results && obj.summary) {
+      return renderToolsText(obj);
+    }
+    if (obj.events && obj.typeCounts) {
+      return renderEventsText(obj);
+    }
     if (Array.isArray(obj.steps)) {
       return obj.steps
         .map((step) => {
@@ -365,6 +530,133 @@ function renderText(value: unknown): string {
     }
   }
   return JSON.stringify(value, null, 2);
+}
+
+function renderInspectionText(obj: Record<string, unknown>): string {
+  const run = obj.run as Record<string, unknown>;
+  const usage = obj.usage as Record<string, unknown>;
+  const diagnostics = obj.diagnostics as Record<string, unknown> | undefined;
+  const lines = [
+    `run ${run.id} status=${run.status} started=${run.startedAt}`,
+    `model=${formatList(run.models)} provider=${formatList(run.providers)} steps=${run.stepCount} durationMs=${run.durationMs}`,
+    renderUsageSummary(usage),
+  ];
+  if (run.error) lines.push(`error=${run.error}`);
+  if (diagnostics?.likelyFailurePoint)
+    lines.push(`likelyFailurePoint=${diagnostics.likelyFailurePoint}`);
+  lines.push('', 'recent messages:');
+  for (const message of obj.recentMessages as Array<Record<string, unknown>>) {
+    lines.push(renderMessageLine(message));
+  }
+  return lines.join('\n');
+}
+
+function renderUsageText(obj: Record<string, unknown>): string {
+  const usage = obj.usage as Record<string, unknown>;
+  const lines = [
+    obj.targetType === 'run'
+      ? `run ${obj.runId} steps=${obj.stepCount}`
+      : `step ${obj.stepId}`,
+    renderUsageSummary(usage),
+  ];
+  if (Array.isArray(obj.steps)) {
+    for (const step of obj.steps as Array<Record<string, unknown>>) {
+      lines.push(
+        `${step.stepNumber} ${step.stepId} ${renderUsageSummary(step.usage as Record<string, unknown>)}`,
+      );
+    }
+  }
+  return lines.join('\n');
+}
+
+function renderUsageSummary(usage: Record<string, unknown>): string {
+  const input = usage.input as Record<string, unknown> | undefined;
+  const output = usage.output as Record<string, unknown> | undefined;
+  const cacheRead = numberValue(input?.cacheRead);
+  const inputTotal = numberValue(input?.total);
+  const cacheHit =
+    inputTotal > 0 && cacheRead != null
+      ? ` cacheHit=${((cacheRead / inputTotal) * 100).toFixed(1)}%`
+      : '';
+  return `input=${inputTotal} noCache=${input?.noCache ?? 0} cacheRead=${input?.cacheRead ?? 0}${cacheHit} output=${output?.total ?? 0} text=${output?.text ?? 0} reasoning=${output?.reasoning ?? 0}`;
+}
+
+function renderToolsText(obj: Record<string, unknown>): string {
+  const summary = obj.summary as Record<string, unknown>;
+  const lines = [
+    `${obj.targetType} ${obj.targetId} calls=${summary.toolCallCount} results=${summary.toolResultCount} available=${summary.availableToolCount}`,
+  ];
+  for (const call of obj.calls as Array<Record<string, unknown>>) {
+    lines.push(
+      `call step=${call.stepNumber} ${call.toolName} id=${call.toolCallId ?? ''} input=${truncateRendered(call.input)}`,
+    );
+  }
+  for (const result of obj.results as Array<Record<string, unknown>>) {
+    lines.push(
+      `result step=${result.sourceStepNumber} ${result.toolName ?? ''} id=${result.toolCallId ?? ''} output=${truncateRendered(result.output)}`,
+    );
+  }
+  if (Array.isArray(obj.available)) {
+    for (const tool of obj.available as Array<Record<string, unknown>>) {
+      lines.push(`available ${tool.name}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function renderEventsText(obj: Record<string, unknown>): string {
+  const lines = [
+    `step ${obj.stepId} source=${obj.source} events=${obj.totalEventCount} filtered=${obj.filteredEventCount}`,
+    `types=${JSON.stringify(obj.typeCounts)}`,
+  ];
+  for (const event of obj.events as Array<Record<string, unknown>>) {
+    lines.push(`${event.index}: ${truncateRendered(event.value)}`);
+  }
+  return lines.join('\n');
+}
+
+function renderMessageLine(message: Record<string, unknown>): string {
+  const text = truncateRendered(message.text);
+  const calls = message.toolCalls as Array<Record<string, unknown>>;
+  const results = message.toolResults as Array<Record<string, unknown>>;
+  const parts = [
+    `[step ${message.stepNumber} message ${message.index}] ${message.role}`,
+  ];
+  if (text) parts.push(`text=${text}`);
+  for (const call of calls) {
+    parts.push(
+      `tool-call ${call.toolName} id=${call.toolCallId ?? ''} args=${truncateRendered(call.args)}`,
+    );
+  }
+  for (const result of results) {
+    parts.push(
+      `tool-result ${result.toolName ?? ''} id=${result.toolCallId ?? ''} result=${truncateRendered(result.result)}`,
+    );
+  }
+  if (message.stepUsage)
+    parts.push(
+      renderUsageSummary(message.stepUsage as Record<string, unknown>),
+    );
+  return parts.join(' ');
+}
+
+function formatList(value: unknown): string {
+  return Array.isArray(value) ? value.join(',') : String(value ?? '');
+}
+
+function truncateRendered(value: unknown, maxChars = 160): string {
+  if (value == null || value === '') return '';
+  const rendered =
+    typeof value === 'string'
+      ? value
+      : JSON.stringify(value).replace(/\s+/g, ' ');
+  return rendered.length > maxChars
+    ? `${rendered.slice(0, maxChars).trim()}...`
+    : rendered;
+}
+
+function numberValue(value: unknown): number {
+  return typeof value === 'number' ? value : 0;
 }
 
 function parseIntOption(value: string): number {

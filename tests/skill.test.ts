@@ -9,9 +9,10 @@ describe('repo-local skill', () => {
     const skill = fs.readFileSync(skillPath, 'utf8');
 
     expect(skill).toContain('name: aisdk-dt-inspector');
+    expect(skill).toContain('aisdk-dt --file <path>');
     expect(skill).toContain('aisdk-dt runs --limit 10 --file <path>');
     expect(skill).toContain(
-      'Prefer `messages`, `steps`, `output`, `tools`, and `usage` before `raw`.',
+      'Prefer `inspect`, `messages`, `steps`, `output`, `tools`, `usage`, and',
     );
     expect(skill).toContain(
       'Use `raw --json-path` before `raw --full`; quote JSON paths',

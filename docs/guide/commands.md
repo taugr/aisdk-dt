@@ -1,12 +1,40 @@
 # CLI Reference
 
-`aisdk-dt` reads an AI SDK DevTools `generations.json` file and emits bounded JSON or compact text output.
+`aisdk-dt` reads an AI SDK DevTools `generations.json` file and emits bounded JSON or compact text output. With no subcommand, it inspects the latest root run using an LLM-oriented summary.
 
 ## Global Options
 
 - `--file <path>`: path to `generations.json`; defaults to `.devtools/generations.json`
 - `--pretty`: pretty-print JSON
 - `--text`: compact human-readable output where supported
+
+## Default Inspection
+
+Inspect what happened most recently:
+
+```sh
+aisdk-dt --file <path>
+```
+
+The default output includes latest run metadata, recent messages, tool calls and
+results, usage, cache usage, step status, timeline spans, and diagnostics.
+
+## `inspect [runId]`
+
+Inspect a run with recent messages, tools, usage, and timeline data.
+
+Options:
+
+- `--latest`: inspect the latest root run
+- `--all`: allow `--latest` to select child runs
+- `--messages <number>`: number of recent messages to include
+- `--max-chars <number>`: maximum preview characters
+- `--events`: include recent raw stream events for errored runs
+
+```sh
+aisdk-dt inspect --latest --file <path>
+aisdk-dt inspect <runId> --messages 20 --file <path>
+```
 
 ## `runs`
 
@@ -30,12 +58,14 @@ Options:
 aisdk-dt runs --limit 10 --errors --file <path>
 ```
 
-## `run <runId>`
+## `run [runId]`
 
 Show compact detail for one run.
 
 Options:
 
+- `--latest`: show the latest root run
+- `--all`: allow `--latest` to select child runs
 - `--include-children`: include nested child runs
 - `--timeline`: include timeline spans
 - `--max-chars <number>`: maximum preview characters
@@ -44,12 +74,13 @@ Options:
 aisdk-dt run <runId> --include-children --file <path>
 ```
 
-## `steps <runId>`
+## `steps [runId]`
 
 List collapsed step-card summaries for a run.
 
 ```sh
 aisdk-dt steps <runId> --file <path>
+aisdk-dt steps --latest --file <path>
 ```
 
 ## `step <stepId>`
@@ -68,19 +99,23 @@ Options:
 aisdk-dt step <stepId> --section output --max-chars 800 --file <path>
 ```
 
-## `messages <runId>`
+## `messages [runId]`
 
-Extract bounded prompt transcript messages.
+Extract recent bounded prompt transcript messages with per-step usage by default.
 
 Options:
 
+- `--latest`: inspect the latest root run
+- `--all`: allow `--latest` to select child runs
 - `--limit <number>`: number of latest messages
 - `--role <role>`: filter by `user`, `assistant`, `system`, or `tool`
 - `--parts <parts>`: comma-separated parts, such as `text`, `reasoning`, `tool-calls`, or `tool-results`
+- `--no-usage`: omit per-step usage metadata
 - `--max-chars <number>`: maximum preview characters
 
 ```sh
-aisdk-dt messages <runId> --limit 6 --max-chars 500 --file <path>
+aisdk-dt messages <runId> --limit 12 --max-chars 500 --file <path>
+aisdk-dt messages --latest --file <path>
 ```
 
 ## `output <stepId>`
@@ -99,26 +134,33 @@ Options:
 aisdk-dt output <stepId> --text --max-chars 800 --file <path>
 ```
 
-## `tools <targetId>`
+## `tools [targetId]`
 
 Query available tools, tool calls, and tool results for a run or step.
 
 Options:
 
+- `--latest`: inspect the latest root run
+- `--all`: allow `--latest` to select child runs
 - `--tool-call-id <id>`: filter by tool call ID
+- `--available`: include available tool definitions
+- `--available-only`: show only available tool definitions
 - `--max-chars <number>`: maximum preview characters
 - `--full`: emit complete selected data
 
 ```sh
 aisdk-dt tools <runOrStepId> --file <path>
+aisdk-dt tools --latest --file <path>
+aisdk-dt tools <runOrStepId> --available-only --file <path>
 ```
 
-## `usage <targetId>`
+## `usage [targetId]`
 
 Show token usage for a run or step.
 
 ```sh
 aisdk-dt usage <runOrStepId> --file <path>
+aisdk-dt usage --latest --text --file <path>
 ```
 
 ## `raw <stepId>`
@@ -141,12 +183,29 @@ aisdk-dt raw <stepId> --request --json-path 'model' --file <path>
 aisdk-dt raw <stepId> --response --json-path 'content[0]' --max-chars 800 --file <path>
 ```
 
-## `timeline <runId>`
+## `timeline [runId]`
 
 Emit trace timeline spans for a run.
 
 ```sh
 aisdk-dt timeline <runId> --file <path>
+aisdk-dt timeline --latest --file <path>
+```
+
+## `events <stepId>`
+
+Summarize raw response or chunk stream events for a step.
+
+Options:
+
+- `--chunks`: inspect raw chunks instead of raw response events
+- `--type <type>`: filter events by type
+- `--last <number>`: number of last events
+- `--max-chars <number>`: maximum preview characters
+
+```sh
+aisdk-dt events <stepId> --last 20 --file <path>
+aisdk-dt events <stepId> --chunks --type response.created --file <path>
 ```
 
 ## Output Modes

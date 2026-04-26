@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/types.js';
 import {
   buildTraceSpans,
+  eventsForStep,
   getMessagesForRun,
+  inspectRun,
   outputForStep,
   rawForStep,
   runDetailSummary,
@@ -249,6 +251,19 @@ describe('generations queries', () => {
     expect(
       getMessagesForRun(db, 'run-root', { parts: 'tool-results' }),
     ).toEqual([expect.objectContaining({ role: 'tool' })]);
+
+    expect(
+      getMessagesForRun(db, 'run-root', { limit: 1, withUsage: true }),
+    ).toEqual([
+      expect.objectContaining({
+        role: 'user',
+        stepUsage: {
+          input: { total: 0 },
+          output: { total: 0 },
+          cacheHitRatio: null,
+        },
+      }),
+    ]);
   });
 
   it('pairs output tool calls with next-step tool results', () => {
@@ -271,6 +286,16 @@ describe('generations queries', () => {
       toolsForTarget(db, 'run-root', { toolCallId: 'tc-1' }),
     ).toMatchObject({
       summary: { availableToolCount: 1, toolCallCount: 1, toolResultCount: 1 },
+      calls: [expect.objectContaining({ toolName: 'lookupStatus' })],
+      results: [expect.objectContaining({ toolCallId: 'tc-1' })],
+    });
+    expect(toolsForTarget(db, 'run-root')).not.toHaveProperty('available');
+    expect(
+      toolsForTarget(db, 'run-root', { availableOnly: true }),
+    ).toMatchObject({
+      available: [expect.objectContaining({ name: 'lookupStatus' })],
+      calls: [],
+      results: [],
     });
 
     expect(usageForTarget(db, 'step-tool-call')).toMatchObject({
@@ -295,6 +320,56 @@ describe('generations queries', () => {
           value: 'tc-1',
         },
       },
+    });
+  });
+
+  it('builds an LLM-oriented run inspection view', () => {
+    const inspection = inspectRun(db, 'run-root', {
+      recentMessages: 3,
+      maxChars: 80,
+      includeEvents: true,
+    });
+
+    expect(inspection).toMatchObject({
+      run: {
+        id: 'run-root',
+        status: 'error',
+        error: 'Synthetic failure',
+        stepCount: 3,
+      },
+      usage: {
+        input: { total: 17, noCache: 2, cacheRead: 3, cacheWrite: 5 },
+        output: { total: 9, text: 0, reasoning: 4 },
+      },
+      diagnostics: {
+        failureStepId: 'step-error',
+        failureStepNumber: 3,
+      },
+    });
+    expect(inspection.recentMessages).toHaveLength(3);
+    expect(inspection.tools).toMatchObject({
+      calls: [expect.objectContaining({ toolName: 'lookupStatus' })],
+      summary: { availableToolCount: 1 },
+    });
+  });
+
+  it('summarizes raw stream events without full raw output', () => {
+    const events = eventsForStep(db.steps[0]!, {
+      source: 'chunks',
+      limit: 1,
+      maxChars: 60,
+    });
+
+    expect(events).toMatchObject({
+      stepId: 'step-tool-call',
+      source: 'chunks',
+      totalEventCount: 1,
+      typeCounts: { unknown: 1 },
+      events: [
+        expect.objectContaining({
+          index: 0,
+        }),
+      ],
     });
   });
 
