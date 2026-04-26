@@ -21,7 +21,7 @@
     "inspection"
   ],
   "bin": {
-    "aisdk-dt": "./dist/cli.js"
+    "aisdk-dt": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -34,7 +34,8 @@
     "lint:fix": "oxlint -c oxlint.json . --fix",
     "format": "oxfmt . --check",
     "format:fix": "oxfmt . --write",
-    "prepare": "husky",
+    "prepare": "node scripts/prepare.mjs",
+    "prepublishOnly": "pnpm run build",
     "release": "bumpp",
     "test": "vitest --run",
     "test:watch": "vitest",
