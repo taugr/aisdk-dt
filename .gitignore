@@ -1,6 +1,9 @@
 node_modules/
 dist/
 docs/.vitepress/dist/
+.next/
+.next-dev/
 .devtools/
 generations*.json
 *.log
+.env
