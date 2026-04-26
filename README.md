@@ -3,6 +3,13 @@
 <p align="center">
   <img src="./docs/public/logo.svg" alt="aisdk-dt logo" width="160" />
   <br />
+  <a href="https://www.npmjs.com/package/aisdk-dt">
+    <img src="https://img.shields.io/npm/v/aisdk-dt" alt="npm version" />
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/npm/l/aisdk-dt" alt="license" />
+  </a>
+  <br />
   CLI for querying AI SDK DevTools <code>generations.json</code> files so your coding agent can inspect Vercel AI SDK requests, responses, tool calls, and usage without flooding context.
 </p>
 
