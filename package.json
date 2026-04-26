@@ -47,7 +47,7 @@
     "*": "oxfmt --no-error-on-unmatched-pattern"
   },
   "dependencies": {
-    "commander": "^13.1.0",
+    "commander": "^14.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
