@@ -4,7 +4,7 @@ Guidance for coding agents working in this repository.
 
 ## Repo Overview
 
-- Package manager: `pnpm` 10
+- Package manager: `pnpm`
 - Runtime baseline: Node.js 20+
 - Project type: TypeScript CLI package (`aisdk-dt`)
 - Workspace layout:
