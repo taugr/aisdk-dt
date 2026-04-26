@@ -5,3 +5,4 @@ docs/.vitepress/dist/
 .devtools/
 generations*.json
 *.log
+.env
