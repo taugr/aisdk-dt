@@ -6,7 +6,7 @@
   extends: ['config:recommended', ':disableDependencyDashboard'],
 
   // Timezone for schedules
-  timezone: 'Etc/UTC',
+  timezone: 'Asia/Yerevan',
 
   // Fallback schedule for anything without a specific schedule
   schedule: ['* 0-12 * * 1-5'],
