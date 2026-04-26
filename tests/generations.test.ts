@@ -6,7 +6,7 @@ import type { Database } from '../src/types.js';
 import {
   buildTraceSpans,
   eventsForStep,
-  finalActionForRun,
+  finalOutputForRun,
   getMessagesForRun,
   inspectRun,
   outputForStep,
@@ -387,35 +387,41 @@ describe('generations queries', () => {
     });
   });
 
-  it('extracts the final visible action with larger bounded payloads', () => {
-    const action = finalActionForRun(db, 'run-root');
+  it('extracts the final output without assuming application-specific tools', () => {
+    const output = finalOutputForRun(db, 'run-root');
 
-    expect(action).toBeNull();
+    expect(output).toMatchObject({
+      type: 'step-output',
+      stepNumber: 2,
+      text: 'The status is ready.',
+      response: { id: 'response-1' },
+    });
 
-    const withMessage: Database = {
+    const withToolOnlyOutput: Database = {
       ...db,
       steps: [
         ...db.steps,
         {
           ...db.steps[0]!,
-          id: 'step-message',
+          id: 'step-generic-tool',
           step_number: 4,
           output: JSON.stringify({
             finishReason: 'tool-calls',
             toolCalls: [
               {
                 type: 'tool-call',
-                toolName: 'send_message',
-                toolCallId: 'tc-message',
-                input: { character: 'teacher', content: 'Visible content' },
+                toolName: 'createTicket',
+                toolCallId: 'tc-ticket',
+                input: { title: 'Investigate status' },
               },
             ],
           }),
         },
         {
           ...db.steps[1]!,
-          id: 'step-message-result',
+          id: 'step-generic-tool-result',
           step_number: 5,
+          output: null,
           input: JSON.stringify({
             prompt: [
               {
@@ -423,9 +429,9 @@ describe('generations queries', () => {
                 content: [
                   {
                     type: 'tool-result',
-                    toolName: 'send_message',
-                    toolCallId: 'tc-message',
-                    output: { success: true },
+                    toolName: 'createTicket',
+                    toolCallId: 'tc-ticket',
+                    output: { ticketId: 'T-1' },
                   },
                 ],
               },
@@ -435,12 +441,17 @@ describe('generations queries', () => {
       ],
     };
 
-    expect(finalActionForRun(withMessage, 'run-root')).toMatchObject({
-      toolName: 'send_message',
-      emittedAtStep: 4,
-      replayedInStep: 5,
-      args: { character: 'teacher', content: 'Visible content' },
-      result: { success: true },
+    expect(finalOutputForRun(withToolOnlyOutput, 'run-root')).toMatchObject({
+      type: 'step-output',
+      stepNumber: 4,
+      toolCalls: [
+        {
+          toolName: 'createTicket',
+          toolCallId: 'tc-ticket',
+          args: { title: 'Investigate status' },
+          result: { ticketId: 'T-1' },
+        },
+      ],
     });
   });
 

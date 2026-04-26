@@ -583,7 +583,7 @@ export function inspectRun(
       ? 'error'
       : 'success';
   const toolData = toolsForTarget(db, runId, { includeAvailable: false });
-  const finalAction = finalActionForRun(db, runId, { maxChars });
+  const finalOutput = finalOutputForRun(db, runId, { maxChars });
   const eventDiagnostics =
     options.includeEvents && errorStep
       ? eventsForStep(errorStep, {
@@ -644,7 +644,7 @@ export function inspectRun(
       status,
       steps,
       toolData,
-      finalAction,
+      finalOutput,
       errorStep,
       eventDiagnostics,
       maxChars,
@@ -676,7 +676,7 @@ function buildNarrative({
   status,
   steps,
   toolData,
-  finalAction,
+  finalOutput,
   errorStep,
   eventDiagnostics,
   maxChars,
@@ -684,7 +684,7 @@ function buildNarrative({
   status: string;
   steps: Step[];
   toolData: Record<string, unknown>;
-  finalAction: Record<string, unknown> | null;
+  finalOutput: Record<string, unknown> | null;
   errorStep?: Step;
   eventDiagnostics: Record<string, unknown> | null;
   maxChars: number;
@@ -720,44 +720,77 @@ function buildNarrative({
         : `Run status is ${status}.`;
   return {
     summary,
-    finalVisibleAction: finalAction,
+    finalOutput,
     toolSequence,
     diagnosis,
   };
 }
 
-export function finalActionForRun(
+export function finalOutputForRun(
   db: Database,
   runId: string,
   options: { maxChars?: number; full?: boolean } = {},
 ): Record<string, unknown> | null {
   const maxChars = options.maxChars ?? 2000;
-  const toolData = toolsForTarget(db, runId, { includeAvailable: false });
-  const calls = (toolData.calls ?? []) as Array<Record<string, unknown>>;
-  const pairedResults = (
-    (toolData.results ?? []) as Array<Record<string, unknown>>
-  ).filter((result) => result.relationship === 'paired-next-step');
-  const finalVisibleAction = [...calls]
-    .reverse()
-    .find((call) => call.toolName === 'send_message');
-  if (!finalVisibleAction) return null;
-  const pairedResult = pairedResults.find(
-    (candidate) => candidate.toolCallId === finalVisibleAction.toolCallId,
-  );
-  const args = safeParseValue(
-    finalVisibleAction.args ?? finalVisibleAction.input,
-  );
-  const result = safeParseValue(pairedResult?.result ?? pairedResult?.output);
-  return {
-    runId,
-    type: 'tool-call',
-    toolName: finalVisibleAction.toolName,
-    toolCallId: finalVisibleAction.toolCallId,
-    emittedAtStep: finalVisibleAction.stepNumber,
-    replayedInStep: pairedResult?.observedInStepNumber,
-    args: options.full ? args : preview(args, maxChars),
-    result: options.full ? result : preview(result, maxChars),
-  };
+  const steps = stepsForRun(db, runId);
+  for (const step of [...steps].reverse()) {
+    const output = parseOutput(step.output);
+    if (!output) continue;
+    const parts = getOutputParts(output);
+    const hasText = parts.text.length > 0;
+    const hasObjectText = Boolean(output.objectText);
+    const hasToolCalls = parts.toolCalls.length > 0;
+    const hasResponse = output.response !== undefined;
+    if (!hasText && !hasObjectText && !hasToolCalls && !hasResponse) continue;
+    const base = {
+      runId,
+      stepId: step.id,
+      stepNumber: step.step_number,
+      finishReason: output.finishReason ?? null,
+    };
+    const results = hasToolCalls ? toolResultsFromNextStep(step, steps) : [];
+    return {
+      ...base,
+      type: 'step-output',
+      ...(hasText
+        ? { text: options.full ? parts.text : preview(parts.text, maxChars) }
+        : {}),
+      ...(hasObjectText
+        ? {
+            objectText: options.full
+              ? output.objectText
+              : preview(output.objectText, maxChars),
+          }
+        : {}),
+      ...(hasToolCalls
+        ? {
+            toolCalls: parts.toolCalls.map((call) => {
+              const result = call.toolCallId
+                ? results.find(
+                    (candidate) => candidate.toolCallId === call.toolCallId,
+                  )
+                : undefined;
+              const args = safeParseValue(call.args ?? call.input);
+              const output = safeParseValue(result?.result ?? result?.output);
+              return {
+                toolName: call.toolName,
+                toolCallId: call.toolCallId,
+                args: options.full ? args : preview(args, maxChars),
+                result: options.full ? output : preview(output, maxChars),
+              };
+            }),
+          }
+        : {}),
+      ...(hasResponse
+        ? {
+            response: options.full
+              ? output.response
+              : preview(output.response, maxChars),
+          }
+        : {}),
+    };
+  }
+  return null;
 }
 
 function buildSuccessSummary(
@@ -768,7 +801,7 @@ function buildSuccessSummary(
     return `Successful ${steps.length}-step run with no tool calls.`;
   const names = calls.map((call) => String(call.toolName));
   const last = names[names.length - 1];
-  return `Successful ${steps.length}-step run. Tool sequence: ${names.join(' -> ')}${last ? `; final tool action: ${last}.` : '.'}`;
+  return `Successful ${steps.length}-step run. Tool sequence: ${names.join(' -> ')}${last ? `; last tool call: ${last}.` : '.'}`;
 }
 
 function serializeChildRun(child: ChildRun): Record<string, unknown> {

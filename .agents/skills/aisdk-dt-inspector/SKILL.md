@@ -13,7 +13,7 @@ provider payloads, or raw chunks into context.
 1. Start with the default LLM-oriented inspection view. With no subcommand,
    `aisdk-dt` inspects the latest root run and includes recent messages, tool
    calls/results, usage, cache usage, step status, timeline, a narrative
-   summary, final visible action, and error diagnostics with bounded previews.
+   summary, final output, and error diagnostics with bounded previews.
    Recent messages are available with `--messages <number>` when needed.
 
    ```bash
@@ -71,7 +71,7 @@ provider payloads, or raw chunks into context.
 - Need what happened in a run: `inspect <runId>`, then `messages`/`steps`.
 - Need full prompt context: add `--include-system`.
 - Need the assistant response or object output: `output`.
-- Need exact final visible action content: `final <runId>`.
+- Need exact final output content: `final <runId>`.
 - Need actual tool calls, arguments, or results: `tools`. Tool results are
   labeled as paired results or replayed context, with original and replayed
   step labels where useful.

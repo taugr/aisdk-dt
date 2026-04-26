@@ -6,9 +6,8 @@
 
 The default command is designed for coding agents and LLM context. It inspects
 the latest root run with tool calls, tool results, step status, usage, cache
-usage, timeline data, a narrative summary, final visible action, and
-diagnostics. Add `--messages <number>` when recent transcript messages are
-needed.
+usage, timeline data, a narrative summary, final output, and diagnostics. Add
+`--messages <number>` when recent transcript messages are needed.
 
 ```sh
 aisdk-dt --file <path>

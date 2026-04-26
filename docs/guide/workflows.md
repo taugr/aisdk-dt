@@ -5,8 +5,8 @@ These workflows are intended for coding agents inspecting an AI SDK DevTools `ge
 ## Inspect What Just Happened
 
 The default command inspects the latest root run with tool calls/results, usage,
-cache usage, step status, timeline, a narrative summary, final visible action,
-and diagnostics. Add `--messages <number>` when transcript messages are needed.
+cache usage, step status, timeline, a narrative summary, final output, and
+diagnostics. Add `--messages <number>` when transcript messages are needed.
 
 ```sh
 aisdk-dt --file <path>
@@ -83,15 +83,15 @@ aisdk-dt output <stepId> --reasoning --max-chars 800 --file <path>
 aisdk-dt output <stepId> --tools --max-chars 800 --file <path>
 ```
 
-## Inspect Final Visible Action
+## Inspect Final Output
 
 ```sh
 aisdk-dt final <runId> --file <path>
 aisdk-dt final --latest --max-chars 2000 --file <path>
 ```
 
-Use this when the default inspection preview identifies the final visible action
-but exact user-facing content matters.
+Use this when the default inspection preview identifies the last meaningful
+output but exact content matters.
 
 ## Inspect Tool Calls And Results
 

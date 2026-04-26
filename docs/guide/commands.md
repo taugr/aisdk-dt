@@ -17,14 +17,14 @@ aisdk-dt --file <path>
 ```
 
 The default output includes latest run metadata, a narrative summary, final
-visible action, compact tool counts, usage, cache usage, step status, timeline
-spans, and diagnostics.
+output, compact tool counts, usage, cache usage, step status, timeline spans,
+and diagnostics.
 
 ## `inspect [runId]`
 
 Inspect a run with recent messages, tools, usage, and timeline data.
-The output includes a `narrative` section with a compact summary, final visible
-action, tool sequence, and diagnosis when available.
+The output includes a `narrative` section with a compact summary, final output,
+tool sequence, and diagnosis when available.
 
 Options:
 
@@ -44,14 +44,14 @@ aisdk-dt inspect <runId> --messages 20 --include-system --file <path>
 
 ## `final [runId]`
 
-Show the final visible action for a run with a larger bounded payload.
+Show the final meaningful output for a run with a larger bounded payload.
 
 Options:
 
-- `--latest`: show the final visible action for the latest root run
+- `--latest`: show the final output for the latest root run
 - `--all`: allow `--latest` to select child runs
 - `--max-chars <number>`: maximum preview characters
-- `--full`: emit the complete final action payload
+- `--full`: emit the complete final output payload
 
 ```sh
 aisdk-dt final --latest --file <path>

@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import {
   findStep,
   findLatestRun,
-  finalActionForRun,
+  finalOutputForRun,
   getMessagesForRun,
   getRunDetail,
   inspectRun,
@@ -97,8 +97,8 @@ program
 
 program
   .command('final [runId]')
-  .description('Show the final visible action for a run.')
-  .option('--latest', 'Show the final visible action for the latest root run.')
+  .description('Show the final meaningful output for a run.')
+  .option('--latest', 'Show the final output for the latest root run.')
   .option('--all', 'Allow --latest to select child runs.')
   .option(
     '--max-chars <number>',
@@ -106,7 +106,7 @@ program
     parseIntOption,
     2000,
   )
-  .option('--full', 'Emit complete final action payload.')
+  .option('--full', 'Emit complete final output payload.')
   .action((runId, options) => {
     const db = loadDb();
     const resolvedRunId = resolveRunId(db, runId, {
@@ -116,7 +116,7 @@ program
     writeOutput(
       {
         runId: resolvedRunId,
-        finalAction: finalActionForRun(db, resolvedRunId, {
+        finalOutput: finalOutputForRun(db, resolvedRunId, {
           maxChars: options.maxChars,
           full: Boolean(options.full),
         }),
@@ -544,8 +544,8 @@ function renderText(value: unknown): string {
     if (obj.run && obj.usage) {
       return renderInspectionText(obj);
     }
-    if (obj.finalAction) {
-      return renderFinalActionText(obj);
+    if (hasOwn(obj, 'finalOutput')) {
+      return renderFinalOutputText(obj);
     }
     if (obj.targetType === 'run' && Array.isArray(obj.steps) && obj.usage) {
       return renderUsageText(obj);
@@ -596,9 +596,9 @@ function renderInspectionText(obj: Record<string, unknown>): string {
         `tools=calls:${summary.toolCallCount ?? 0} pairedResults:${summary.pairedToolResultCount ?? summary.toolResultCount ?? 0} replayedResults:${summary.replayedToolResultCount ?? 0}`,
       );
   }
-  if (narrative?.finalVisibleAction)
+  if (narrative && hasOwn(narrative, 'finalOutput'))
     lines.push(
-      `finalVisibleAction=${renderAction(narrative.finalVisibleAction as Record<string, unknown>)}`,
+      `finalOutput=${renderFinalOutput(narrative?.finalOutput as Record<string, unknown> | null)}`,
     );
   if (run.error) lines.push(`error=${run.error}`);
   if (diagnostics?.likelyFailurePoint)
@@ -687,14 +687,12 @@ function renderToolsText(obj: Record<string, unknown>): string {
   return lines.join('\n');
 }
 
-function renderFinalActionText(obj: Record<string, unknown>): string {
-  const action = obj.finalAction as Record<string, unknown> | null;
-  if (!action) return `run ${obj.runId} finalAction=null`;
-  return [
-    `run ${obj.runId}`,
-    `finalVisibleAction=${renderAction(action)}`,
-    `result=${truncateRendered(action.result, 500)}`,
-  ].join('\n');
+function renderFinalOutputText(obj: Record<string, unknown>): string {
+  const output = obj.finalOutput as Record<string, unknown> | null;
+  if (!output) return `run ${obj.runId} finalOutput=null`;
+  return [`run ${obj.runId}`, `finalOutput=${renderFinalOutput(output)}`].join(
+    '\n',
+  );
 }
 
 function renderEventsText(obj: Record<string, unknown>): string {
@@ -784,12 +782,40 @@ function renderMessageLine(message: Record<string, unknown>): string {
   return parts.join(' ');
 }
 
-function renderAction(action: Record<string, unknown>): string {
-  return `${action.toolName ?? 'tool'} emittedAtStep=${action.emittedAtStep ?? action.stepNumber ?? ''}${action.replayedInStep ? ` replayedInStep=${action.replayedInStep}` : ''} id=${action.toolCallId ?? ''} args=${truncateRendered(action.args)}`;
+function renderFinalOutput(output: Record<string, unknown> | null): string {
+  if (!output) return 'null';
+  const location = `step=${output.stepNumber ?? ''}`;
+  if (output.type === 'step-output') {
+    const parts = [`step-output ${location}`];
+    if (output.text) parts.push(`text=${truncateRendered(output.text, 500)}`);
+    if (output.objectText)
+      parts.push(`objectText=${truncateRendered(output.objectText, 500)}`);
+    if (output.response)
+      parts.push(`response=${truncateRendered(output.response, 500)}`);
+    const calls = Array.isArray(output.toolCalls)
+      ? (output.toolCalls as Array<Record<string, unknown>>)
+      : [];
+    if (calls.length > 0) {
+      parts.push(
+        `toolCalls=${calls
+          .map(
+            (call) =>
+              `${call.toolName ?? 'tool'} id=${call.toolCallId ?? ''} args=${truncateRendered(call.args)} result=${truncateRendered(call.result)}`,
+          )
+          .join('; ')}`,
+      );
+    }
+    return parts.join(' ');
+  }
+  return `${String(output.type ?? 'output')} ${location} value=${truncateRendered(output, 500)}`;
 }
 
 function formatList(value: unknown): string {
   return Array.isArray(value) ? value.join(',') : String(value ?? '');
+}
+
+function hasOwn(obj: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
 function truncateRendered(value: unknown, maxChars = 160): string {
