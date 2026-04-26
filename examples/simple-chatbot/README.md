@@ -10,7 +10,15 @@ This example is a **Next.js app** (App Router) that:
 ## Prerequisites
 
 - Node.js 20+
-- `OPENAI_API_KEY` in your environment
+- `OPENAI_API_KEY` in your environment or in `.env`
+
+Create a local env file from the template:
+
+```bash
+cp .env.example .env
+```
+
+Then set `OPENAI_API_KEY` in `.env`. Do not commit real API keys.
 
 ## Install
 
@@ -28,12 +36,20 @@ From this example directory:
 pnpm dev
 ```
 
-Open <http://localhost:3000> and ask things like:
+Open the local URL printed by Next.js and ask things like:
 
 - `What should I do in Seattle this afternoon?`
 - `Suggest outdoor plans for Austin today.`
 
-Each prompt hits `POST /api/chat`, where `generateText` can call tools and DevTools records the full generation flow.
+If port `3000` is already in use, Next.js will choose another port such as
+<http://localhost:3001>.
+
+Each prompt hits `POST /api/chat`, where `generateText` can call tools across
+multiple steps and DevTools records the full generation flow.
+
+The dev script uses a separate `.next-dev` output directory and clears it before
+starting. This keeps local development routing separate from production
+`next build` output and avoids stale dev route manifests.
 
 ## Open the DevTools viewer
 
@@ -43,7 +59,8 @@ In a second terminal (same directory):
 pnpm devtools
 ```
 
-Then open <http://localhost:4983>.
+Then open <http://localhost:4983>. If the port is already in use, DevTools is
+usually already running there.
 
 ## Inspect with an LLM agent + skill (first workflow)
 

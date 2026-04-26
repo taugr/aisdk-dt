@@ -8,6 +8,21 @@ description: Use when inspecting or querying AI SDK DevTools generations.json fi
 Use `aisdk-dt` to inspect `generations.json` without pulling huge prompts,
 provider payloads, or raw chunks into context.
 
+## Command Resolution
+
+Prefer running the CLI from the project that produced the `generations.json`
+file, especially when `aisdk-dt` is installed as a local dependency. In that
+case, use the package manager executor for that project:
+
+```bash
+pnpm exec aisdk-dt --file .devtools/generations.json
+```
+
+If `aisdk-dt` is available on `PATH`, using `aisdk-dt` directly is fine. If the
+file is outside the current working directory, pass an absolute `--file` path.
+In the examples below, replace `aisdk-dt` with `pnpm exec aisdk-dt` when using a
+local project dependency.
+
 ## Default Workflow
 
 1. Start with the default LLM-oriented inspection view. With no subcommand,

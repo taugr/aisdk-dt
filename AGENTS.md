@@ -91,6 +91,7 @@ pnpm run build
 
 - The example app lives at `examples/simple-chatbot` and is a Next.js App Router app that exercises AI SDK `generateText`, tools, and AI SDK DevTools capture.
 - The example requires `OPENAI_API_KEY` for successful chat requests. Use `examples/simple-chatbot/.env.example` as the template and do not commit real keys or populated `.env*` files.
+- The example dev script uses `NEXT_DIST_DIR=.next-dev` and clears `.next-dev` before starting. Keep that separate from production `.next` output; stale dev route manifests caused pages and API routes to return 404 after `next build`.
 - Build the local CLI before inspecting captured DevTools output from a clone:
 
 ```bash
@@ -98,7 +99,7 @@ pnpm --filter aisdk-dt run build
 ```
 
 - To verify the example without an API key, run `pnpm --filter aisdk-dt-example-chatbot run build`, start the dev server, open the rendered page, and confirm `POST /api/chat` returns the expected missing-key error.
-- To fully verify the chat/tool path, provide `OPENAI_API_KEY`, start the example app, submit a prompt, confirm `.devtools/generations.json` is created, then inspect it with bounded commands such as:
+- To fully verify the chat/tool path, provide `OPENAI_API_KEY`, start the example app with `pnpm --filter aisdk-dt-example-chatbot run dev`, submit a prompt, confirm `.devtools/generations.json` is created, then inspect it with bounded commands such as:
 
 ```bash
 pnpm --filter aisdk-dt-example-chatbot exec aisdk-dt runs --file examples/simple-chatbot/.devtools/generations.json --limit 10 --pretty
@@ -116,6 +117,7 @@ pnpm --filter aisdk-dt-example-chatbot exec aisdk-dt tools --file examples/simpl
 - `src/types.ts`: shared types
 - `README.md`: user-facing install/usage and command examples
 - `examples/simple-chatbot/.env.example`: required env template for the example app
+- `examples/simple-chatbot/next.config.js`: allows dev to use `.next-dev` while production builds use `.next`
 - `examples/simple-chatbot/app/api/chat/route.js`: example AI SDK route with tools and DevTools middleware
 - `examples/simple-chatbot/app/page.jsx`: example browser UI
 - `.agents/skills/aisdk-dt-inspector/SKILL.md`: agent workflow for safe inspection

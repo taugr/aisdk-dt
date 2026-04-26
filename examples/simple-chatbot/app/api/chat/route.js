@@ -1,12 +1,17 @@
-import { generateText, tool, wrapLanguageModel } from 'ai';
+import { generateText, stepCountIs, tool, wrapLanguageModel } from 'ai';
 import { devToolsMiddleware } from '@ai-sdk/devtools';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
-const model = wrapLanguageModel({
-  model: openai('gpt-4o-mini'),
-  middleware: devToolsMiddleware,
-});
+const baseModel = openai('gpt-4o-mini');
+
+const model =
+  process.env.NODE_ENV === 'production'
+    ? baseModel
+    : wrapLanguageModel({
+        model: baseModel,
+        middleware: devToolsMiddleware(),
+      });
 
 const tools = {
   getWeather: tool({
@@ -78,11 +83,12 @@ export async function POST(request) {
         'You are a concise local travel assistant. Use tools whenever weather or activities are relevant.',
       prompt,
       tools,
+      stopWhen: stepCountIs(5),
     });
 
     return Response.json({
       text: result.text,
-      toolCalls: result.toolCalls,
+      toolCalls: result.steps.flatMap((step) => step.toolCalls),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
