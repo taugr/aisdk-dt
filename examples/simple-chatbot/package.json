@@ -1,0 +1,28 @@
+{
+  "name": "aisdk-dt-example-chatbot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "devtools": "pnpm exec @ai-sdk/devtools",
+    "inspect:runs": "pnpm exec aisdk-dt runs --file .devtools/generations.json --limit 10 --pretty",
+    "inspect:tools": "pnpm exec aisdk-dt tools --file .devtools/generations.json"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.85",
+    "ai": "^6.0.168",
+    "next": "^16.2.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@ai-sdk/devtools": "^0.0.15",
+    "aisdk-dt": "workspace:*"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

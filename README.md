@@ -102,6 +102,12 @@ aisdk-dt usage <runOrStepId> --file .devtools/generations.json
 
 If you run commands from the project that produced the file, `--file` defaults to `.devtools/generations.json`.
 
+## Example Project
+
+Want a concrete, end-to-end demo? Start with this first example:
+
+- [`examples/simple-chatbot`](./examples/simple-chatbot/README.md): a Next.js chatbot with AI SDK tool calls, AI SDK DevTools capture, and `aisdk-dt` inspection commands.
+
 ## AI Skills
 
 This repo includes an agent skill in `.agents/skills/aisdk-dt-inspector/` for safe inspection of large AI SDK DevTools generation logs without pulling full prompts, raw provider payloads, or streamed chunks into context.

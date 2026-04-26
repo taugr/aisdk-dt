@@ -109,3 +109,4 @@ Prefer `--json-path` and `--max-chars` before `--full`.
 - [Workflows](/guide/workflows)
 - [CLI Reference](/guide/commands)
 - [Safe Inspection](/guide/safe-inspection)
+- [Example Chatbot (repo)](https://github.com/tom-auger/aisdk-dt/tree/main/examples/simple-chatbot)
