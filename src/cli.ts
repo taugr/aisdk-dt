@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import {
   findStep,
   findLatestRun,
+  finalActionForRun,
   getMessagesForRun,
   getRunDetail,
   inspectRun,
@@ -48,7 +49,6 @@ program
     if (!run) fail('No root runs found.');
     writeOutput(
       inspectRun(db, run.id, {
-        recentMessages: 12,
         maxChars: 500,
         includeEvents: true,
       }),
@@ -67,8 +67,9 @@ program
     '--messages <number>',
     'Number of recent messages to include.',
     parseIntOption,
-    12,
   )
+  .option('--include-system', 'Include system messages in message output.')
+  .option('--usage-per-message', 'Include usage on every rendered message.')
   .option(
     '--max-chars <number>',
     'Maximum preview characters.',
@@ -85,9 +86,42 @@ program
     writeOutput(
       inspectRun(db, resolvedRunId, {
         recentMessages: options.messages,
+        includeMessages: typeof options.messages === 'number',
+        includeSystemMessages: Boolean(options.includeSystem),
+        usagePerMessage: Boolean(options.usagePerMessage),
         maxChars: options.maxChars,
         includeEvents: Boolean(options.events),
       }),
+    );
+  });
+
+program
+  .command('final [runId]')
+  .description('Show the final visible action for a run.')
+  .option('--latest', 'Show the final visible action for the latest root run.')
+  .option('--all', 'Allow --latest to select child runs.')
+  .option(
+    '--max-chars <number>',
+    'Maximum preview characters.',
+    parseIntOption,
+    2000,
+  )
+  .option('--full', 'Emit complete final action payload.')
+  .action((runId, options) => {
+    const db = loadDb();
+    const resolvedRunId = resolveRunId(db, runId, {
+      latest: Boolean(options.latest) || !runId,
+      includeChildren: Boolean(options.all),
+    });
+    writeOutput(
+      {
+        runId: resolvedRunId,
+        finalAction: finalActionForRun(db, resolvedRunId, {
+          maxChars: options.maxChars,
+          full: Boolean(options.full),
+        }),
+      },
+      { forceJson: Boolean(options.full) },
     );
   });
 
@@ -249,7 +283,8 @@ program
     '--parts <parts>',
     'Comma-separated parts: text,reasoning,tool-calls,tool-results.',
   )
-  .option('--no-usage', 'Omit per-step usage from messages.')
+  .option('--include-system', 'Include system messages.')
+  .option('--usage-per-message', 'Include usage on every rendered message.')
   .option(
     '--max-chars <number>',
     'Maximum preview characters.',
@@ -269,7 +304,8 @@ program
         role: options.role,
         parts: options.parts,
         maxChars: options.maxChars,
-        withUsage: Boolean(options.usage),
+        withUsage: Boolean(options.usagePerMessage),
+        includeSystem: Boolean(options.includeSystem),
       }),
     });
   });
@@ -505,14 +541,23 @@ function renderText(value: unknown): string {
         })
         .join('\n');
     }
-    if (obj.run && obj.recentMessages && obj.usage) {
+    if (obj.run && obj.usage) {
       return renderInspectionText(obj);
+    }
+    if (obj.finalAction) {
+      return renderFinalActionText(obj);
     }
     if (obj.targetType === 'run' && Array.isArray(obj.steps) && obj.usage) {
       return renderUsageText(obj);
     }
     if (obj.targetType === 'step' && obj.usage) {
       return renderUsageText(obj);
+    }
+    if (obj.runId && Array.isArray(obj.messages)) {
+      return renderMessagesText(obj);
+    }
+    if (obj.runId && Array.isArray(obj.spans)) {
+      return renderTimelineText(obj);
     }
     if (obj.calls && obj.results && obj.summary) {
       return renderToolsText(obj);
@@ -535,18 +580,52 @@ function renderText(value: unknown): string {
 function renderInspectionText(obj: Record<string, unknown>): string {
   const run = obj.run as Record<string, unknown>;
   const usage = obj.usage as Record<string, unknown>;
+  const narrative = obj.narrative as Record<string, unknown> | undefined;
   const diagnostics = obj.diagnostics as Record<string, unknown> | undefined;
   const lines = [
     `run ${run.id} status=${run.status} started=${run.startedAt}`,
     `model=${formatList(run.models)} provider=${formatList(run.providers)} steps=${run.stepCount} durationMs=${run.durationMs}`,
     renderUsageSummary(usage),
   ];
+  if (narrative?.summary) lines.push(`summary=${narrative.summary}`);
+  if (obj.tools && typeof obj.tools === 'object') {
+    const tools = obj.tools as Record<string, unknown>;
+    const summary = tools.summary as Record<string, unknown> | undefined;
+    if (summary)
+      lines.push(
+        `tools=calls:${summary.toolCallCount ?? 0} pairedResults:${summary.pairedToolResultCount ?? summary.toolResultCount ?? 0} replayedResults:${summary.replayedToolResultCount ?? 0}`,
+      );
+  }
+  if (narrative?.finalVisibleAction)
+    lines.push(
+      `finalVisibleAction=${renderAction(narrative.finalVisibleAction as Record<string, unknown>)}`,
+    );
   if (run.error) lines.push(`error=${run.error}`);
   if (diagnostics?.likelyFailurePoint)
     lines.push(`likelyFailurePoint=${diagnostics.likelyFailurePoint}`);
-  lines.push('', 'recent messages:');
-  for (const message of obj.recentMessages as Array<Record<string, unknown>>) {
-    lines.push(renderMessageLine(message));
+  if (narrative?.diagnosis) lines.push(`diagnosis=${narrative.diagnosis}`);
+  if (Array.isArray(obj.timeline)) {
+    lines.push('', 'timeline:');
+    lines.push(
+      ...renderTimelineLines(obj.timeline as Array<Record<string, unknown>>),
+    );
+  }
+  if (Array.isArray(obj.recentMessages)) {
+    lines.push('', 'recent messages:');
+    for (const message of obj.recentMessages as Array<
+      Record<string, unknown>
+    >) {
+      lines.push(renderMessageLine(message));
+    }
+  }
+  if (
+    diagnostics?.recentEvents &&
+    typeof diagnostics.recentEvents === 'object'
+  ) {
+    lines.push('', 'diagnostic events:');
+    lines.push(
+      renderEventsText(diagnostics.recentEvents as Record<string, unknown>),
+    );
   }
   return lines.join('\n');
 }
@@ -584,7 +663,7 @@ function renderUsageSummary(usage: Record<string, unknown>): string {
 function renderToolsText(obj: Record<string, unknown>): string {
   const summary = obj.summary as Record<string, unknown>;
   const lines = [
-    `${obj.targetType} ${obj.targetId} calls=${summary.toolCallCount} results=${summary.toolResultCount} available=${summary.availableToolCount}`,
+    `${obj.targetType} ${obj.targetId} calls=${summary.toolCallCount} pairedResults=${summary.pairedToolResultCount ?? summary.toolResultCount} replayedResults=${summary.replayedToolResultCount ?? 0} available=${summary.availableToolCount}`,
   ];
   for (const call of obj.calls as Array<Record<string, unknown>>) {
     lines.push(
@@ -592,8 +671,12 @@ function renderToolsText(obj: Record<string, unknown>): string {
     );
   }
   for (const result of obj.results as Array<Record<string, unknown>>) {
+    const relationship =
+      result.relationship === 'replayed-context'
+        ? `replayed-context originalCallStep=${result.originalCallStepNumber ?? ''} replayedFromStep=${result.replayedFromStepNumber ?? result.sourceStepNumber ?? ''} observedStep=${result.observedInStepNumber ?? ''}`
+        : `paired-next-step originalCallStep=${result.originalCallStepNumber ?? result.sourceStepNumber ?? ''} observedStep=${result.observedInStepNumber ?? ''}`;
     lines.push(
-      `result step=${result.sourceStepNumber} ${result.toolName ?? ''} id=${result.toolCallId ?? ''} output=${truncateRendered(result.output)}`,
+      `result ${relationship} ${result.toolName ?? ''} id=${result.toolCallId ?? ''} output=${truncateRendered(result.output)}`,
     );
   }
   if (Array.isArray(obj.available)) {
@@ -604,15 +687,76 @@ function renderToolsText(obj: Record<string, unknown>): string {
   return lines.join('\n');
 }
 
+function renderFinalActionText(obj: Record<string, unknown>): string {
+  const action = obj.finalAction as Record<string, unknown> | null;
+  if (!action) return `run ${obj.runId} finalAction=null`;
+  return [
+    `run ${obj.runId}`,
+    `finalVisibleAction=${renderAction(action)}`,
+    `result=${truncateRendered(action.result, 500)}`,
+  ].join('\n');
+}
+
 function renderEventsText(obj: Record<string, unknown>): string {
+  const diagnosis = obj.diagnosis as Record<string, unknown> | undefined;
   const lines = [
     `step ${obj.stepId} source=${obj.source} events=${obj.totalEventCount} filtered=${obj.filteredEventCount}`,
     `types=${JSON.stringify(obj.typeCounts)}`,
   ];
+  if (diagnosis?.likelyFailure)
+    lines.push(`diagnosis=${diagnosis.likelyFailure}`);
+  if (diagnosis) {
+    lines.push(
+      `streamStarted=${diagnosis.streamStarted} responseMetadataSeen=${diagnosis.responseMetadataSeen} toolInputCompleted=${diagnosis.toolInputCompleted} terminalEventSeen=${diagnosis.terminalEventSeen}`,
+    );
+    if (diagnosis.toolInputStarted)
+      lines.push(
+        `toolInputStarted=${truncateRendered(diagnosis.toolInputStarted)}`,
+      );
+    if (diagnosis.toolInputPartial)
+      lines.push(
+        `toolInputPartial=${truncateRendered(diagnosis.toolInputPartial)}`,
+      );
+  }
   for (const event of obj.events as Array<Record<string, unknown>>) {
     lines.push(`${event.index}: ${truncateRendered(event.value)}`);
   }
   return lines.join('\n');
+}
+
+function renderMessagesText(obj: Record<string, unknown>): string {
+  const lines = [
+    `run ${obj.runId} messages=${(obj.messages as unknown[]).length}`,
+  ];
+  for (const message of obj.messages as Array<Record<string, unknown>>) {
+    lines.push(renderMessageLine(message));
+  }
+  return lines.join('\n');
+}
+
+function renderTimelineText(obj: Record<string, unknown>): string {
+  return [
+    `run ${obj.runId} spans=${(obj.spans as unknown[]).length}`,
+    ...renderTimelineLines(obj.spans as Array<Record<string, unknown>>),
+  ].join('\n');
+}
+
+function renderTimelineLines(spans: Array<Record<string, unknown>>): string[] {
+  const lines: string[] = [];
+  for (const span of spans) {
+    const depth =
+      typeof span.depth === 'number' && span.depth > 0
+        ? '  '.repeat(span.depth)
+        : '';
+    const tokens = span.tokens as Record<string, unknown> | undefined;
+    const tokenText = tokens
+      ? ` input=${tokens.input ?? 0} output=${tokens.output ?? 0}`
+      : '';
+    lines.push(
+      `${span.startMs}ms ${depth}${span.kind} ${span.label}${span.sublabel ? ` ${truncateRendered(span.sublabel, 80)}` : ''} duration=${span.durationMs}ms${tokenText}`,
+    );
+  }
+  return lines;
 }
 
 function renderMessageLine(message: Record<string, unknown>): string {
@@ -640,12 +784,27 @@ function renderMessageLine(message: Record<string, unknown>): string {
   return parts.join(' ');
 }
 
+function renderAction(action: Record<string, unknown>): string {
+  return `${action.toolName ?? 'tool'} emittedAtStep=${action.emittedAtStep ?? action.stepNumber ?? ''}${action.replayedInStep ? ` replayedInStep=${action.replayedInStep}` : ''} id=${action.toolCallId ?? ''} args=${truncateRendered(action.args)}`;
+}
+
 function formatList(value: unknown): string {
   return Array.isArray(value) ? value.join(',') : String(value ?? '');
 }
 
 function truncateRendered(value: unknown, maxChars = 160): string {
   if (value == null || value === '') return '';
+  if (
+    typeof value === 'object' &&
+    value != null &&
+    'preview' in value &&
+    typeof (value as Record<string, unknown>).preview === 'string'
+  ) {
+    return truncateRendered(
+      (value as Record<string, unknown>).preview,
+      maxChars,
+    );
+  }
   const rendered =
     typeof value === 'string'
       ? value

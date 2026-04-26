@@ -4,8 +4,9 @@ These workflows are intended for coding agents inspecting an AI SDK DevTools `ge
 
 ## Inspect What Just Happened
 
-The default command inspects the latest root run with recent messages, tool
-calls/results, usage, cache usage, step status, timeline, and diagnostics.
+The default command inspects the latest root run with tool calls/results, usage,
+cache usage, step status, timeline, a narrative summary, final visible action,
+and diagnostics. Add `--messages <number>` when transcript messages are needed.
 
 ```sh
 aisdk-dt --file <path>
@@ -52,6 +53,7 @@ aisdk-dt run <runId> --include-children --timeline --file <path>
 
 ```sh
 aisdk-dt messages <runId> --limit 12 --max-chars 500 --file <path>
+aisdk-dt inspect <runId> --messages 12 --max-chars 500 --file <path>
 ```
 
 Filter by role:
@@ -80,6 +82,16 @@ Include reasoning or tools only when needed:
 aisdk-dt output <stepId> --reasoning --max-chars 800 --file <path>
 aisdk-dt output <stepId> --tools --max-chars 800 --file <path>
 ```
+
+## Inspect Final Visible Action
+
+```sh
+aisdk-dt final <runId> --file <path>
+aisdk-dt final --latest --max-chars 2000 --file <path>
+```
+
+Use this when the default inspection preview identifies the final visible action
+but exact user-facing content matters.
 
 ## Inspect Tool Calls And Results
 
@@ -116,6 +128,8 @@ aisdk-dt events <stepId> --chunks --type response.created --file <path>
 ```
 
 Use event summaries for aborted or hung streams before reaching for raw payloads.
+The event diagnosis calls out common patterns such as aborted streamed tool
+input or missing terminal events.
 
 ## Query Raw Payloads
 

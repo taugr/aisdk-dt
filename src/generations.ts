@@ -402,6 +402,11 @@ export function toolResultsFromNextStep(
   );
 }
 
+function nextStep(step: Step, siblingSteps: Step[]): Step | undefined {
+  const index = siblingSteps.findIndex((candidate) => candidate.id === step.id);
+  return index >= 0 ? siblingSteps[index + 1] : undefined;
+}
+
 function summarizeToolCalls(toolCalls: ToolCallContentPart[]): {
   label: string;
   details?: string;
@@ -557,6 +562,9 @@ export function inspectRun(
   runId: string,
   options: {
     recentMessages?: number;
+    includeMessages?: boolean;
+    includeSystemMessages?: boolean;
+    usagePerMessage?: boolean;
     maxChars?: number;
     includeEvents?: boolean;
     eventLimit?: number;
@@ -575,6 +583,14 @@ export function inspectRun(
       ? 'error'
       : 'success';
   const toolData = toolsForTarget(db, runId, { includeAvailable: false });
+  const finalAction = finalActionForRun(db, runId, { maxChars });
+  const eventDiagnostics =
+    options.includeEvents && errorStep
+      ? eventsForStep(errorStep, {
+          limit: options.eventLimit ?? 12,
+          maxChars,
+        })
+      : null;
   return {
     run: {
       id: detail.run.id,
@@ -613,12 +629,26 @@ export function inspectRun(
         usage: summary.usage,
       };
     }),
-    recentMessages: getMessagesForRun(db, runId, {
-      limit: options.recentMessages ?? 12,
-      maxChars,
-      withUsage: true,
-    }),
+    ...(options.includeMessages
+      ? {
+          recentMessages: getMessagesForRun(db, runId, {
+            limit: options.recentMessages ?? 12,
+            maxChars,
+            withUsage: Boolean(options.usagePerMessage),
+            includeSystem: Boolean(options.includeSystemMessages),
+          }),
+        }
+      : {}),
     tools: toolData,
+    narrative: buildNarrative({
+      status,
+      steps,
+      toolData,
+      finalAction,
+      errorStep,
+      eventDiagnostics,
+      maxChars,
+    }),
     timeline: buildTraceSpans(detail).map((span) => ({
       kind: span.kind,
       stepId: span.stepId,
@@ -637,16 +667,108 @@ export function inspectRun(
       likelyFailurePoint: errorStep
         ? `step ${errorStep.step_number}: ${errorStep.error}`
         : null,
-      ...(options.includeEvents && errorStep
-        ? {
-            recentEvents: eventsForStep(errorStep, {
-              limit: options.eventLimit ?? 12,
-              maxChars,
-            }),
-          }
-        : {}),
+      ...(eventDiagnostics ? { recentEvents: eventDiagnostics } : {}),
     },
   };
+}
+
+function buildNarrative({
+  status,
+  steps,
+  toolData,
+  finalAction,
+  errorStep,
+  eventDiagnostics,
+  maxChars,
+}: {
+  status: string;
+  steps: Step[];
+  toolData: Record<string, unknown>;
+  finalAction: Record<string, unknown> | null;
+  errorStep?: Step;
+  eventDiagnostics: Record<string, unknown> | null;
+  maxChars: number;
+}): Record<string, unknown> {
+  const calls = (toolData.calls ?? []) as Array<Record<string, unknown>>;
+  const pairedResults = (
+    (toolData.results ?? []) as Array<Record<string, unknown>>
+  ).filter((result) => result.relationship === 'paired-next-step');
+  const toolSequence = calls.map((call) => {
+    const result = pairedResults.find(
+      (candidate) => candidate.toolCallId === call.toolCallId,
+    );
+    return {
+      stepNumber: call.stepNumber,
+      toolName: call.toolName,
+      toolCallId: call.toolCallId,
+      args: preview(safeParseValue(call.args ?? call.input), maxChars),
+      result:
+        result == null
+          ? null
+          : preview(safeParseValue(result.result ?? result.output), maxChars),
+    };
+  });
+  const diagnosis =
+    (eventDiagnostics?.diagnosis as Record<string, unknown> | undefined)
+      ?.likelyFailure ??
+    (errorStep ? `step ${errorStep.step_number}: ${errorStep.error}` : null);
+  const summary =
+    status === 'success'
+      ? buildSuccessSummary(steps, calls)
+      : errorStep
+        ? `Run ${status} at step ${errorStep.step_number}: ${errorStep.error}.`
+        : `Run status is ${status}.`;
+  return {
+    summary,
+    finalVisibleAction: finalAction,
+    toolSequence,
+    diagnosis,
+  };
+}
+
+export function finalActionForRun(
+  db: Database,
+  runId: string,
+  options: { maxChars?: number; full?: boolean } = {},
+): Record<string, unknown> | null {
+  const maxChars = options.maxChars ?? 2000;
+  const toolData = toolsForTarget(db, runId, { includeAvailable: false });
+  const calls = (toolData.calls ?? []) as Array<Record<string, unknown>>;
+  const pairedResults = (
+    (toolData.results ?? []) as Array<Record<string, unknown>>
+  ).filter((result) => result.relationship === 'paired-next-step');
+  const finalVisibleAction = [...calls]
+    .reverse()
+    .find((call) => call.toolName === 'send_message');
+  if (!finalVisibleAction) return null;
+  const pairedResult = pairedResults.find(
+    (candidate) => candidate.toolCallId === finalVisibleAction.toolCallId,
+  );
+  const args = safeParseValue(
+    finalVisibleAction.args ?? finalVisibleAction.input,
+  );
+  const result = safeParseValue(pairedResult?.result ?? pairedResult?.output);
+  return {
+    runId,
+    type: 'tool-call',
+    toolName: finalVisibleAction.toolName,
+    toolCallId: finalVisibleAction.toolCallId,
+    emittedAtStep: finalVisibleAction.stepNumber,
+    replayedInStep: pairedResult?.observedInStepNumber,
+    args: options.full ? args : preview(args, maxChars),
+    result: options.full ? result : preview(result, maxChars),
+  };
+}
+
+function buildSuccessSummary(
+  steps: Step[],
+  calls: Array<Record<string, unknown>>,
+): string {
+  if (calls.length === 0)
+    return `Successful ${steps.length}-step run with no tool calls.`;
+  const names = calls.map((call) => String(call.toolName));
+  const last = names[names.length - 1];
+  return `Successful ${steps.length}-step run. Tool sequence: ${names.join(' -> ')}${last ? `; final tool action: ${last}.` : '.'}`;
 }
 
 function serializeChildRun(child: ChildRun): Record<string, unknown> {
@@ -673,7 +795,17 @@ export function allToolDataForStep(
   available: ToolDefinition[];
   calls: Array<ToolCallContentPart & { stepId: string; stepNumber: number }>;
   results: Array<
-    ToolResultContentPart & { sourceStepId: string; sourceStepNumber: number }
+    ToolResultContentPart & {
+      sourceStepId: string;
+      sourceStepNumber: number;
+      originalCallStepId?: string;
+      originalCallStepNumber?: number;
+      replayedFromStepId?: string;
+      replayedFromStepNumber?: number;
+      observedInStepId?: string;
+      observedInStepNumber?: number;
+      relationship: 'paired-next-step' | 'replayed-context';
+    }
   >;
 } {
   const output = parseOutput(step.output);
@@ -682,12 +814,41 @@ export function allToolDataForStep(
     stepId: step.id,
     stepNumber: step.step_number,
   }));
+  const callIds = new Set(calls.map((call) => call.toolCallId).filter(Boolean));
+  const followingStep = nextStep(step, siblingSteps);
   const results = toolResultsFromNextStep(step, siblingSteps).map((result) => ({
     ...result,
     sourceStepId: step.id,
     sourceStepNumber: step.step_number,
+    originalCallStepId: callIds.has(result.toolCallId) ? step.id : undefined,
+    originalCallStepNumber: callIds.has(result.toolCallId)
+      ? step.step_number
+      : findOriginalCallStepNumber(result, siblingSteps),
+    replayedFromStepId: callIds.has(result.toolCallId) ? undefined : step.id,
+    replayedFromStepNumber: callIds.has(result.toolCallId)
+      ? undefined
+      : step.step_number,
+    observedInStepId: followingStep?.id,
+    observedInStepNumber: followingStep?.step_number,
+    relationship:
+      result.toolCallId && callIds.has(result.toolCallId)
+        ? ('paired-next-step' as const)
+        : ('replayed-context' as const),
   }));
   return { available: availableToolsFromStep(step), calls, results };
+}
+
+function findOriginalCallStepNumber(
+  result: ToolResultContentPart,
+  siblingSteps: Step[],
+): number | undefined {
+  if (!result.toolCallId) return undefined;
+  return siblingSteps.find((candidate) => {
+    const output = parseOutput(candidate.output);
+    return getOutputParts(output).toolCalls.some(
+      (call) => call.toolCallId === result.toolCallId,
+    );
+  })?.step_number;
 }
 
 export function getMessagesForRun(
@@ -699,6 +860,7 @@ export function getMessagesForRun(
     parts?: string;
     maxChars?: number;
     withUsage?: boolean;
+    includeSystem?: boolean;
   } = {},
 ): Array<Record<string, unknown>> {
   const steps = stepsForRun(db, runId);
@@ -722,6 +884,7 @@ export function getMessagesForRun(
     }));
   });
   const filtered = messages.filter((message) => {
+    if (!options.includeSystem && message.role === 'system') return false;
     if (options.role && message.role !== options.role) return false;
     if (!options.parts) return true;
     const wanted = new Set(options.parts.split(',').map((part) => part.trim()));
@@ -891,6 +1054,12 @@ export function toolsForTarget(
   const filteredResults = options.toolCallId
     ? results.filter((result) => result.toolCallId === options.toolCallId)
     : results;
+  const pairedResults = filteredResults.filter(
+    (result) => result.relationship === 'paired-next-step',
+  );
+  const replayedResults = filteredResults.filter(
+    (result) => result.relationship === 'replayed-context',
+  );
   const counts = filteredCalls.reduce<Record<string, number>>((acc, call) => {
     acc[call.toolName] = (acc[call.toolName] ?? 0) + 1;
     return acc;
@@ -905,6 +1074,10 @@ export function toolsForTarget(
       availableToolCount: available.length,
       toolCallCount: options.availableOnly ? 0 : filteredCalls.length,
       toolResultCount: options.availableOnly ? 0 : filteredResults.length,
+      pairedToolResultCount: options.availableOnly ? 0 : pairedResults.length,
+      replayedToolResultCount: options.availableOnly
+        ? 0
+        : replayedResults.length,
       counts,
     },
   };
@@ -948,12 +1121,14 @@ export function eventsForStep(
     acc[type] = (acc[type] ?? 0) + 1;
     return acc;
   }, {});
+  const diagnosis = diagnoseEvents(events);
   return {
     stepId: step.id,
     source,
     totalEventCount: events.length,
     filteredEventCount: filtered.length,
     typeCounts,
+    diagnosis,
     events: selected.map((event, index) => ({
       index:
         typeof options.limit === 'number'
@@ -961,6 +1136,62 @@ export function eventsForStep(
           : index,
       value: preview(event, options.maxChars ?? DEFAULT_MAX_CHARS),
     })),
+  };
+}
+
+function diagnoseEvents(events: unknown[]): Record<string, unknown> {
+  const typedEvents = events.filter(
+    (event): event is Record<string, unknown> =>
+      typeof event === 'object' && event != null,
+  );
+  const types = typedEvents.map((event) => String(event.type ?? 'unknown'));
+  const toolInputStart = typedEvents.find(
+    (event) => event.type === 'tool-input-start',
+  );
+  const toolInputStarted =
+    toolInputStart == null
+      ? null
+      : {
+          id: toolInputStart.id ?? null,
+          toolName: toolInputStart.toolName ?? null,
+        };
+  const terminalEventSeen = types.some((type) =>
+    [
+      'finish',
+      'response.done',
+      'response.completed',
+      'response.error',
+      'error',
+      'tool-call',
+      'tool-call-delta',
+      'tool-input-available',
+    ].includes(type),
+  );
+  const toolInputCompleted = types.some((type) =>
+    ['tool-input-available', 'tool-call', 'tool-call-delta'].includes(type),
+  );
+  const toolInputPartial = typedEvents
+    .filter(
+      (event) =>
+        event.type === 'tool-input-delta' && typeof event.delta === 'string',
+    )
+    .map((event) => String(event.delta))
+    .join('');
+  const likelyFailure =
+    toolInputStarted && !toolInputCompleted
+      ? `aborted during streamed tool input${typeof toolInputStarted.toolName === 'string' ? ` for ${toolInputStarted.toolName}` : ''}`
+      : !terminalEventSeen && events.length > 0
+        ? 'stream ended without a terminal event'
+        : null;
+  return {
+    streamStarted:
+      types.includes('stream-start') || types.includes('response.created'),
+    responseMetadataSeen: types.includes('response-metadata'),
+    toolInputStarted,
+    toolInputPartial: toolInputPartial || null,
+    toolInputCompleted,
+    terminalEventSeen,
+    likelyFailure,
   };
 }
 

@@ -16,24 +16,46 @@ Inspect what happened most recently:
 aisdk-dt --file <path>
 ```
 
-The default output includes latest run metadata, recent messages, tool calls and
-results, usage, cache usage, step status, timeline spans, and diagnostics.
+The default output includes latest run metadata, a narrative summary, final
+visible action, compact tool counts, usage, cache usage, step status, timeline
+spans, and diagnostics.
 
 ## `inspect [runId]`
 
 Inspect a run with recent messages, tools, usage, and timeline data.
+The output includes a `narrative` section with a compact summary, final visible
+action, tool sequence, and diagnosis when available.
 
 Options:
 
 - `--latest`: inspect the latest root run
 - `--all`: allow `--latest` to select child runs
-- `--messages <number>`: number of recent messages to include
+- `--messages <number>`: include this many recent non-system messages
+- `--include-system`: include system messages in the message section
+- `--usage-per-message`: include usage on every rendered message
 - `--max-chars <number>`: maximum preview characters
 - `--events`: include recent raw stream events for errored runs
 
 ```sh
 aisdk-dt inspect --latest --file <path>
 aisdk-dt inspect <runId> --messages 20 --file <path>
+aisdk-dt inspect <runId> --messages 20 --include-system --file <path>
+```
+
+## `final [runId]`
+
+Show the final visible action for a run with a larger bounded payload.
+
+Options:
+
+- `--latest`: show the final visible action for the latest root run
+- `--all`: allow `--latest` to select child runs
+- `--max-chars <number>`: maximum preview characters
+- `--full`: emit the complete final action payload
+
+```sh
+aisdk-dt final --latest --file <path>
+aisdk-dt final <runId> --max-chars 2000 --file <path>
 ```
 
 ## `runs`
@@ -101,7 +123,8 @@ aisdk-dt step <stepId> --section output --max-chars 800 --file <path>
 
 ## `messages [runId]`
 
-Extract recent bounded prompt transcript messages with per-step usage by default.
+Extract recent bounded prompt transcript messages. System messages and
+per-message usage are omitted by default.
 
 Options:
 
@@ -110,7 +133,8 @@ Options:
 - `--limit <number>`: number of latest messages
 - `--role <role>`: filter by `user`, `assistant`, `system`, or `tool`
 - `--parts <parts>`: comma-separated parts, such as `text`, `reasoning`, `tool-calls`, or `tool-results`
-- `--no-usage`: omit per-step usage metadata
+- `--include-system`: include system messages
+- `--usage-per-message`: include usage on every rendered message
 - `--max-chars <number>`: maximum preview characters
 
 ```sh
@@ -137,6 +161,10 @@ aisdk-dt output <stepId> --text --max-chars 800 --file <path>
 ## `tools [targetId]`
 
 Query available tools, tool calls, and tool results for a run or step.
+Actual calls/results are shown first by default. Results are labeled as
+`paired-next-step` when they answer a tool call from that step, or
+`replayed-context` when they are prior context carried into a later step. Text
+output includes original, replayed-from, and observed step labels where useful.
 
 Options:
 
@@ -195,6 +223,9 @@ aisdk-dt timeline --latest --file <path>
 ## `events <stepId>`
 
 Summarize raw response or chunk stream events for a step.
+The output includes event type counts and a diagnosis for common failure shapes,
+such as streamed tool input that never completed or streams with no terminal
+event.
 
 Options:
 

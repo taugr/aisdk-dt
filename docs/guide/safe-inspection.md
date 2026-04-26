@@ -5,8 +5,10 @@
 ## Start With Inspection
 
 The default command is designed for coding agents and LLM context. It inspects
-the latest root run with bounded previews of recent messages, tool calls,
-tool results, step status, usage, cache usage, timeline data, and diagnostics.
+the latest root run with tool calls, tool results, step status, usage, cache
+usage, timeline data, a narrative summary, final visible action, and
+diagnostics. Add `--messages <number>` when recent transcript messages are
+needed.
 
 ```sh
 aisdk-dt --file <path>
@@ -25,6 +27,7 @@ Prefer semantic commands first:
 
 ```sh
 aisdk-dt runs --limit 10 --file <path>
+aisdk-dt inspect <runId> --messages 12 --max-chars 500 --file <path>
 aisdk-dt messages <runId> --limit 12 --max-chars 500 --file <path>
 aisdk-dt steps <runId> --file <path>
 aisdk-dt output <stepId> --max-chars 800 --file <path>

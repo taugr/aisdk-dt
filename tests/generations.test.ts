@@ -6,6 +6,7 @@ import type { Database } from '../src/types.js';
 import {
   buildTraceSpans,
   eventsForStep,
+  finalActionForRun,
   getMessagesForRun,
   inspectRun,
   outputForStep,
@@ -178,7 +179,16 @@ const db: Database = {
       usage: null,
       error: 'Synthetic failure',
       raw_request: null,
-      raw_response: null,
+      raw_response: JSON.stringify([
+        { type: 'stream-start', warnings: [] },
+        { type: 'response-metadata', modelId: 'test-model' },
+        {
+          type: 'tool-input-start',
+          id: 'tc-2',
+          toolName: 'sendMessage',
+        },
+        { type: 'tool-input-delta', id: 'tc-2', delta: '{"content"' },
+      ]),
       raw_chunks: null,
       provider_options: null,
     },
@@ -285,9 +295,22 @@ describe('generations queries', () => {
     expect(
       toolsForTarget(db, 'run-root', { toolCallId: 'tc-1' }),
     ).toMatchObject({
-      summary: { availableToolCount: 1, toolCallCount: 1, toolResultCount: 1 },
+      summary: {
+        availableToolCount: 1,
+        toolCallCount: 1,
+        toolResultCount: 1,
+        pairedToolResultCount: 1,
+        replayedToolResultCount: 0,
+      },
       calls: [expect.objectContaining({ toolName: 'lookupStatus' })],
-      results: [expect.objectContaining({ toolCallId: 'tc-1' })],
+      results: [
+        expect.objectContaining({
+          toolCallId: 'tc-1',
+          relationship: 'paired-next-step',
+          originalCallStepNumber: 1,
+          observedInStepNumber: 2,
+        }),
+      ],
     });
     expect(toolsForTarget(db, 'run-root')).not.toHaveProperty('available');
     expect(
@@ -326,6 +349,7 @@ describe('generations queries', () => {
   it('builds an LLM-oriented run inspection view', () => {
     const inspection = inspectRun(db, 'run-root', {
       recentMessages: 3,
+      includeMessages: true,
       maxChars: 80,
       includeEvents: true,
     });
@@ -344,12 +368,79 @@ describe('generations queries', () => {
       diagnostics: {
         failureStepId: 'step-error',
         failureStepNumber: 3,
+        recentEvents: {
+          diagnosis: {
+            likelyFailure: 'aborted during streamed tool input for sendMessage',
+            toolInputPartial: '{"content"',
+          },
+        },
+      },
+      narrative: {
+        summary: 'Run error at step 3: Synthetic failure.',
+        diagnosis: 'aborted during streamed tool input for sendMessage',
       },
     });
     expect(inspection.recentMessages).toHaveLength(3);
     expect(inspection.tools).toMatchObject({
       calls: [expect.objectContaining({ toolName: 'lookupStatus' })],
       summary: { availableToolCount: 1 },
+    });
+  });
+
+  it('extracts the final visible action with larger bounded payloads', () => {
+    const action = finalActionForRun(db, 'run-root');
+
+    expect(action).toBeNull();
+
+    const withMessage: Database = {
+      ...db,
+      steps: [
+        ...db.steps,
+        {
+          ...db.steps[0]!,
+          id: 'step-message',
+          step_number: 4,
+          output: JSON.stringify({
+            finishReason: 'tool-calls',
+            toolCalls: [
+              {
+                type: 'tool-call',
+                toolName: 'send_message',
+                toolCallId: 'tc-message',
+                input: { character: 'teacher', content: 'Visible content' },
+              },
+            ],
+          }),
+        },
+        {
+          ...db.steps[1]!,
+          id: 'step-message-result',
+          step_number: 5,
+          input: JSON.stringify({
+            prompt: [
+              {
+                role: 'tool',
+                content: [
+                  {
+                    type: 'tool-result',
+                    toolName: 'send_message',
+                    toolCallId: 'tc-message',
+                    output: { success: true },
+                  },
+                ],
+              },
+            ],
+          }),
+        },
+      ],
+    };
+
+    expect(finalActionForRun(withMessage, 'run-root')).toMatchObject({
+      toolName: 'send_message',
+      emittedAtStep: 4,
+      replayedInStep: 5,
+      args: { character: 'teacher', content: 'Visible content' },
+      result: { success: true },
     });
   });
 
@@ -365,6 +456,11 @@ describe('generations queries', () => {
       source: 'chunks',
       totalEventCount: 1,
       typeCounts: { unknown: 1 },
+      diagnosis: {
+        streamStarted: false,
+        terminalEventSeen: false,
+        likelyFailure: 'stream ended without a terminal event',
+      },
       events: [
         expect.objectContaining({
           index: 0,

@@ -12,8 +12,9 @@ provider payloads, or raw chunks into context.
 
 1. Start with the default LLM-oriented inspection view. With no subcommand,
    `aisdk-dt` inspects the latest root run and includes recent messages, tool
-   calls/results, usage, cache usage, step status, timeline, and error
-   diagnostics with bounded previews.
+   calls/results, usage, cache usage, step status, timeline, a narrative
+   summary, final visible action, and error diagnostics with bounded previews.
+   Recent messages are available with `--messages <number>` when needed.
 
    ```bash
    aisdk-dt --file <path>
@@ -31,9 +32,11 @@ provider payloads, or raw chunks into context.
 3. Prefer bounded semantic drill-downs before raw payloads.
 
    ```bash
+   aisdk-dt inspect <runId> --messages 12 --max-chars 500 --file <path>
    aisdk-dt messages <runId> --limit 12 --max-chars 500 --file <path>
    aisdk-dt steps <runId> --file <path>
    aisdk-dt output <stepId> --max-chars 800 --file <path>
+   aisdk-dt final <runId> --max-chars 2000 --file <path>
    aisdk-dt tools <runOrStepId> --file <path>
    aisdk-dt usage <runOrStepId> --file <path>
    aisdk-dt events <stepId> --last 20 --file <path>
@@ -66,12 +69,18 @@ provider payloads, or raw chunks into context.
 - Need what happened most recently: `aisdk-dt --file <path>`.
 - Need recent activity: `runs`.
 - Need what happened in a run: `inspect <runId>`, then `messages`/`steps`.
+- Need full prompt context: add `--include-system`.
 - Need the assistant response or object output: `output`.
-- Need actual tool calls, arguments, or results: `tools`.
+- Need exact final visible action content: `final <runId>`.
+- Need actual tool calls, arguments, or results: `tools`. Tool results are
+  labeled as paired results or replayed context, with original and replayed
+  step labels where useful.
 - Need available tool definitions: `tools --available` or
   `tools --available-only`.
 - Need token/caching details: `usage`.
-- Need stream event summaries for failed/hung calls: `events`.
+- Need stream event summaries for failed/hung calls: `events`. Event output
+  includes a diagnosis such as missing terminal events or aborted streamed tool
+  input.
 - Need provider wire payloads or stream chunks: `raw` with a narrow
   `--json-path`.
 - Need timing/nested call structure: `timeline`.
