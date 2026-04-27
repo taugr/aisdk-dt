@@ -52,7 +52,7 @@ export interface ToolResultContentPart {
 }
 
 export interface ReasoningContentPart {
-  type: 'reasoning' | 'thinking';
+  type?: 'reasoning' | 'thinking';
   text?: string;
   thinking?: string;
   reasoning?: string;

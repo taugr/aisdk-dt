@@ -667,7 +667,7 @@ function renderToolsText(obj: Record<string, unknown>): string {
   ];
   for (const call of obj.calls as Array<Record<string, unknown>>) {
     lines.push(
-      `call step=${call.stepNumber} ${call.toolName} id=${call.toolCallId ?? ''} input=${truncateRendered(call.input)}`,
+      `call ${call.relationship ?? 'tool-call'} step=${call.stepNumber} ${call.toolName} id=${call.toolCallId ?? ''} input=${truncateRendered(call.input)}`,
     );
   }
   for (const result of obj.results as Array<Record<string, unknown>>) {

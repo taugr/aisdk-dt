@@ -176,6 +176,9 @@ aisdk-dt tools <runOrStepId>
 aisdk-dt usage <runOrStepId>
 ```
 
+`tools` includes terminal unpaired calls when a model step finishes with
+`tool-calls` and no later tool result is present.
+
 Query raw payloads only when the semantic commands do not answer the question:
 
 ```bash

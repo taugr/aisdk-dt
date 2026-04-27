@@ -89,7 +89,8 @@ local project dependency.
 - Need exact final output content: `final <runId>`.
 - Need actual tool calls, arguments, or results: `tools`. Tool results are
   labeled as paired results or replayed context, with original and replayed
-  step labels where useful.
+  step labels where useful. Terminal calls without later results are still
+  shown as unpaired terminal calls.
 - Need available tool definitions: `tools --available` or
   `tools --available-only`.
 - Need token/caching details: `usage`.

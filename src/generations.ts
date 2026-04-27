@@ -826,7 +826,7 @@ export function allToolDataForStep(
   siblingSteps: Step[],
 ): {
   available: ToolDefinition[];
-  calls: Array<ToolCallContentPart & { stepId: string; stepNumber: number }>;
+  calls: ToolCallRow[];
   results: Array<
     ToolResultContentPart & {
       sourceStepId: string;
@@ -842,14 +842,32 @@ export function allToolDataForStep(
   >;
 } {
   const output = parseOutput(step.output);
-  const calls = getOutputParts(output).toolCalls.map((call) => ({
+  const outputCalls = getOutputParts(output).toolCalls;
+  const followingResults = toolResultsFromNextStep(step, siblingSteps);
+  const resultIds = new Set(
+    followingResults.flatMap((result) =>
+      typeof result.toolCallId === 'string' ? [result.toolCallId] : [],
+    ),
+  );
+  const calls: ToolCallRow[] = outputCalls.map((call) => ({
     ...call,
     stepId: step.id,
     stepNumber: step.step_number,
+    relationship:
+      call.toolCallId && resultIds.has(call.toolCallId)
+        ? ('paired-next-step' as const)
+        : ('terminal-unpaired-call' as const),
   }));
+  const rawCalls = toolCallsFromEvents(step, toolCallIdSet(calls), resultIds);
+  calls.push(...rawCalls);
+  const reconstructedCalls = terminalToolInputCallsFromEvents(
+    step,
+    toolCallIdSet(calls),
+  );
+  calls.push(...reconstructedCalls);
   const callIds = new Set(calls.map((call) => call.toolCallId).filter(Boolean));
   const followingStep = nextStep(step, siblingSteps);
-  const results = toolResultsFromNextStep(step, siblingSteps).map((result) => ({
+  const results = followingResults.map((result) => ({
     ...result,
     sourceStepId: step.id,
     sourceStepNumber: step.step_number,
@@ -869,6 +887,128 @@ export function allToolDataForStep(
         : ('replayed-context' as const),
   }));
   return { available: availableToolsFromStep(step), calls, results };
+}
+
+type ToolCallRow = ToolCallContentPart & {
+  stepId: string;
+  stepNumber: number;
+  relationship:
+    | 'paired-next-step'
+    | 'terminal-unpaired-call'
+    | 'reconstructed-terminal-tool-input';
+};
+
+function toolCallIdSet(calls: ToolCallRow[]): Set<string> {
+  return new Set(
+    calls.flatMap((call) =>
+      typeof call.toolCallId === 'string' ? [call.toolCallId] : [],
+    ),
+  );
+}
+
+function toolCallsFromEvents(
+  step: Step,
+  knownToolCallIds: Set<string>,
+  resultIds: Set<string>,
+): Array<
+  ToolCallContentPart & {
+    stepId: string;
+    stepNumber: number;
+    relationship: 'paired-next-step' | 'terminal-unpaired-call';
+  }
+> {
+  return rawEventsForStep(step)
+    .filter((event) => event.type === 'tool-call')
+    .filter((event) => {
+      const toolCallId =
+        typeof event.toolCallId === 'string' ? event.toolCallId : undefined;
+      return toolCallId != null && !knownToolCallIds.has(toolCallId);
+    })
+    .flatMap((event) => {
+      const toolName =
+        typeof event.toolName === 'string' ? event.toolName : undefined;
+      const toolCallId =
+        typeof event.toolCallId === 'string' ? event.toolCallId : undefined;
+      if (!toolName || !toolCallId) return [];
+      return [
+        {
+          ...(event as unknown as ToolCallContentPart),
+          toolName,
+          toolCallId,
+          stepId: step.id,
+          stepNumber: step.step_number,
+          relationship: resultIds.has(toolCallId)
+            ? ('paired-next-step' as const)
+            : ('terminal-unpaired-call' as const),
+        },
+      ];
+    });
+}
+
+function terminalToolInputCallsFromEvents(
+  step: Step,
+  knownToolCallIds: Set<string>,
+): Array<
+  ToolCallContentPart & {
+    stepId: string;
+    stepNumber: number;
+    relationship: 'reconstructed-terminal-tool-input';
+  }
+> {
+  const events = rawEventsForStep(step);
+  if (!events.some(isToolCallsFinishEvent)) return [];
+
+  const pending = new Map<string, { toolName: string; deltas: string[] }>();
+  for (const event of events) {
+    if (event.type === 'tool-input-start') {
+      const id = typeof event.id === 'string' ? event.id : undefined;
+      const toolName =
+        typeof event.toolName === 'string' ? event.toolName : undefined;
+      if (id && toolName && !knownToolCallIds.has(id)) {
+        pending.set(id, { toolName, deltas: [] });
+      }
+      continue;
+    }
+    if (event.type === 'tool-input-delta') {
+      const id = typeof event.id === 'string' ? event.id : undefined;
+      const delta = typeof event.delta === 'string' ? event.delta : undefined;
+      if (id && delta) pending.get(id)?.deltas.push(delta);
+    }
+  }
+
+  return [...pending.entries()].map(([toolCallId, call]) => ({
+    type: 'tool-call' as const,
+    toolName: call.toolName,
+    toolCallId,
+    input: call.deltas.join(''),
+    stepId: step.id,
+    stepNumber: step.step_number,
+    relationship: 'reconstructed-terminal-tool-input' as const,
+  }));
+}
+
+function rawEventsForStep(step: Step): Array<Record<string, unknown>> {
+  const parsed = parseJson(step.raw_response);
+  const events = Array.isArray(parsed)
+    ? parsed
+    : parsed == null
+      ? []
+      : [parsed];
+  return events.filter(
+    (event): event is Record<string, unknown> =>
+      typeof event === 'object' && event != null,
+  );
+}
+
+function isToolCallsFinishEvent(event: Record<string, unknown>): boolean {
+  if (event.type !== 'finish') return false;
+  const finishReason = event.finishReason;
+  if (finishReason === 'tool-calls') return true;
+  return (
+    typeof finishReason === 'object' &&
+    finishReason != null &&
+    (finishReason as Record<string, unknown>).unified === 'tool-calls'
+  );
 }
 
 function findOriginalCallStepNumber(
@@ -1093,6 +1233,11 @@ export function toolsForTarget(
   const replayedResults = filteredResults.filter(
     (result) => result.relationship === 'replayed-context',
   );
+  const unpairedTerminalCalls = filteredCalls.filter(
+    (call) =>
+      call.relationship === 'terminal-unpaired-call' ||
+      call.relationship === 'reconstructed-terminal-tool-input',
+  );
   const counts = filteredCalls.reduce<Record<string, number>>((acc, call) => {
     acc[call.toolName] = (acc[call.toolName] ?? 0) + 1;
     return acc;
@@ -1111,6 +1256,9 @@ export function toolsForTarget(
       replayedToolResultCount: options.availableOnly
         ? 0
         : replayedResults.length,
+      unpairedTerminalToolCallCount: options.availableOnly
+        ? 0
+        : unpairedTerminalCalls.length,
       counts,
     },
   };

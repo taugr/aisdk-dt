@@ -165,6 +165,9 @@ Actual calls/results are shown first by default. Results are labeled as
 `paired-next-step` when they answer a tool call from that step, or
 `replayed-context` when they are prior context carried into a later step. Text
 output includes original, replayed-from, and observed step labels where useful.
+Calls that finish at `tool-calls` without a later result are labeled
+`terminal-unpaired-call`; when only streamed tool input is available, they are
+labeled `reconstructed-terminal-tool-input`.
 
 Options:
 

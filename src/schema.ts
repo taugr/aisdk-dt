@@ -47,7 +47,7 @@ export const toolResultContentPartSchema = z
 
 export const reasoningContentPartSchema = z
   .object({
-    type: z.union([z.literal('reasoning'), z.literal('thinking')]),
+    type: z.union([z.literal('reasoning'), z.literal('thinking')]).optional(),
     text: z.string().optional(),
     thinking: z.string().optional(),
     reasoning: z.string().optional(),

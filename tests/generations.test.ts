@@ -331,6 +331,130 @@ describe('generations queries', () => {
     });
   });
 
+  it('reports terminal tool calls when no later tool result exists', () => {
+    const terminalDb: Database = {
+      runs: [{ ...db.runs[0]!, id: 'run-terminal' }],
+      steps: [
+        {
+          ...db.steps[0]!,
+          id: 'step-terminal-tool-call',
+          run_id: 'run-terminal',
+          output: JSON.stringify({
+            finishReason: { unified: 'tool-calls' },
+            reasoningParts: [{ id: 'reasoning-1', text: '' }],
+            toolCalls: [
+              {
+                type: 'tool-call',
+                toolName: 'generateImage',
+                toolCallId: 'tc-terminal',
+                input: '{"prompt":"small orange robot"}',
+                providerMetadata: {
+                  openai: { itemId: 'fc-terminal' },
+                },
+              },
+            ],
+          }),
+          raw_response: JSON.stringify([
+            {
+              type: 'tool-call',
+              toolName: 'generateImage',
+              toolCallId: 'tc-terminal',
+              input: '{"prompt":"small orange robot"}',
+            },
+            {
+              type: 'finish',
+              finishReason: { unified: 'tool-calls' },
+            },
+          ]),
+        },
+      ],
+    };
+
+    expect(toolsForTarget(terminalDb, 'run-terminal')).toMatchObject({
+      calls: [
+        expect.objectContaining({
+          toolName: 'generateImage',
+          toolCallId: 'tc-terminal',
+          input: '{"prompt":"small orange robot"}',
+          providerMetadata: { openai: { itemId: 'fc-terminal' } },
+          relationship: 'terminal-unpaired-call',
+          stepId: 'step-terminal-tool-call',
+          stepNumber: 1,
+        }),
+      ],
+      results: [],
+      summary: {
+        availableToolCount: 1,
+        toolCallCount: 1,
+        toolResultCount: 0,
+        pairedToolResultCount: 0,
+        replayedToolResultCount: 0,
+        unpairedTerminalToolCallCount: 1,
+        counts: { generateImage: 1 },
+      },
+    });
+  });
+
+  it('reconstructs terminal calls from streamed tool input events', () => {
+    const reconstructedDb: Database = {
+      runs: [{ ...db.runs[0]!, id: 'run-reconstructed' }],
+      steps: [
+        {
+          ...db.steps[0]!,
+          id: 'step-reconstructed-tool-call',
+          run_id: 'run-reconstructed',
+          output: JSON.stringify({
+            finishReason: { unified: 'tool-calls' },
+            toolCalls: [],
+          }),
+          raw_response: JSON.stringify([
+            {
+              type: 'tool-input-start',
+              id: 'tc-reconstructed',
+              toolName: 'generateImage',
+            },
+            {
+              type: 'tool-input-delta',
+              id: 'tc-reconstructed',
+              delta: '{"prompt":"',
+            },
+            {
+              type: 'tool-input-delta',
+              id: 'tc-reconstructed',
+              delta: 'small orange robot"}',
+            },
+            {
+              type: 'tool-input-end',
+              id: 'tc-reconstructed',
+            },
+            {
+              type: 'finish',
+              finishReason: { unified: 'tool-calls' },
+            },
+          ]),
+        },
+      ],
+    };
+
+    expect(toolsForTarget(reconstructedDb, 'run-reconstructed')).toMatchObject({
+      calls: [
+        expect.objectContaining({
+          toolName: 'generateImage',
+          toolCallId: 'tc-reconstructed',
+          input: '{"prompt":"small orange robot"}',
+          relationship: 'reconstructed-terminal-tool-input',
+        }),
+      ],
+      results: [],
+      summary: {
+        toolCallCount: 1,
+        toolResultCount: 0,
+        unpairedTerminalToolCallCount: 1,
+        counts: { generateImage: 1 },
+      },
+    });
+  });
+
   it('queries raw fields by path without forcing full output', () => {
     const raw = rawForStep(db.steps[0]!, {
       provider: true,
