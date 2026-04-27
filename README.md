@@ -27,22 +27,44 @@
 
 Install the `aisdk-dt` binary globally:
 
+With pnpm:
+
 ```bash
 pnpm add -g aisdk-dt
+```
+
+With npm:
+
+```bash
 npm install -g aisdk-dt
 ```
 
 Or run it without installing:
 
+With pnpm:
+
 ```bash
 pnpx aisdk-dt runs --file .devtools/generations.json
+```
+
+With npm:
+
+```bash
 npx aisdk-dt runs --file .devtools/generations.json
 ```
 
 Or install it locally as a dev dependency:
 
+With pnpm:
+
 ```bash
 pnpm add -D aisdk-dt
+```
+
+With npm:
+
+```bash
+npm install -D aisdk-dt
 ```
 
 This package requires Node.js 20 or newer.
@@ -74,6 +96,38 @@ Point your agent at the `generations.json` file and ask it to inspect or summari
 ```text
 Use $aisdk-dt-inspector to inspect .devtools/generations.json and summarize failed runs from today.
 ```
+
+## Updating
+
+If you installed `aisdk-dt` globally, update it with the same package manager:
+
+With pnpm:
+
+```bash
+pnpm add -g aisdk-dt@latest
+```
+
+With npm:
+
+```bash
+npm install -g aisdk-dt@latest
+```
+
+If you installed it locally in a project:
+
+With pnpm:
+
+```bash
+pnpm update aisdk-dt
+```
+
+With npm:
+
+```bash
+npm update aisdk-dt
+```
+
+If you use `npx` or `pnpx`, you usually do not need to update anything manually; they resolve the package when run.
 
 ## Direct CLI Usage
 

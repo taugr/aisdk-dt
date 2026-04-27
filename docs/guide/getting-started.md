@@ -16,22 +16,44 @@ After enabling DevTools, run your app and confirm `.devtools/generations.json` e
 
 Install the `aisdk-dt` binary globally:
 
+With pnpm:
+
 ```sh
 pnpm add -g aisdk-dt
+```
+
+With npm:
+
+```sh
 npm install -g aisdk-dt
 ```
 
 Or run it without installing:
 
+With pnpm:
+
 ```sh
 pnpx aisdk-dt runs --file .devtools/generations.json
+```
+
+With npm:
+
+```sh
 npx aisdk-dt runs --file .devtools/generations.json
 ```
 
 Or install it locally as a dev dependency:
 
+With pnpm:
+
 ```sh
 pnpm add -D aisdk-dt
+```
+
+With npm:
+
+```sh
+npm install -D aisdk-dt
 ```
 
 `aisdk-dt` requires Node.js 20 or newer.
@@ -102,6 +124,38 @@ aisdk-dt raw <stepId> --response --json-path 'content[0]' --max-chars 800 --file
 ```
 
 Prefer `--json-path` and `--max-chars` before `--full`.
+
+## Update The CLI
+
+If you installed `aisdk-dt` globally, update it with the same package manager:
+
+With pnpm:
+
+```sh
+pnpm add -g aisdk-dt@latest
+```
+
+With npm:
+
+```sh
+npm install -g aisdk-dt@latest
+```
+
+If you installed it locally in a project:
+
+With pnpm:
+
+```sh
+pnpm update aisdk-dt
+```
+
+With npm:
+
+```sh
+npm update aisdk-dt
+```
+
+If you use `npx` or `pnpx`, you usually do not need to update anything manually; they resolve the package when run.
 
 ## Next Steps
 
