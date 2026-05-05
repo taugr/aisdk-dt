@@ -39,6 +39,14 @@
       // Cron: Every Monday during days 15-21 (contains 3rd Monday)
       schedule: ['* * 15-21 * 1'],
     },
+
+    {
+      description: 'Auto-merge pnpm updates',
+      matchPackageNames: ['pnpm'],
+      matchUpdateTypes: ['minor', 'patch', 'digest'],
+      automerge: true,
+      automergeType: 'pr',
+    },
     {
       description: 'Group and auto-merge non-major devDependencies; majors stay one PR per package',
       matchDepTypes: ['devDependencies'],
