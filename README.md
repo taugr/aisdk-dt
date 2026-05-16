@@ -88,7 +88,7 @@ This repo includes an agent skill in `.agents/skills/aisdk-dt-inspector/` for sa
 Install the `aisdk-dt-inspector` skill:
 
 ```bash
-npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
+npx skills add taugr/aisdk-dt --skill aisdk-dt-inspector
 ```
 
 Point your agent at the `generations.json` file and ask it to inspect or summarize a run:

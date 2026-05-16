@@ -69,7 +69,7 @@ Use the bundled `aisdk-dt-inspector` skill first, then fall back to manual CLI c
 Install the skill once:
 
 ```bash
-npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
+npx skills add taugr/aisdk-dt --skill aisdk-dt-inspector
 ```
 
 Then ask your coding agent to inspect this example's DevTools file:

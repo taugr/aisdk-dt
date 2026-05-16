@@ -63,7 +63,7 @@ npm install -D aisdk-dt
 Install the bundled skill with skills.sh:
 
 ```sh
-npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
+npx skills add taugr/aisdk-dt --skill aisdk-dt-inspector
 ```
 
 Then call the skill by name when you want your agent to inspect DevTools data:
@@ -163,4 +163,4 @@ If you use `npx` or `pnpx`, you usually do not need to update anything manually;
 - [Workflows](/guide/workflows)
 - [CLI Reference](/guide/commands)
 - [Safe Inspection](/guide/safe-inspection)
-- [Example Chatbot (repo)](https://github.com/tom-auger/aisdk-dt/tree/main/examples/simple-chatbot)
+- [Example Chatbot (repo)](https://github.com/taugr/aisdk-dt/tree/main/examples/simple-chatbot)

@@ -13,7 +13,7 @@ Use it when a coding agent needs to inspect AI SDK DevTools generation logs with
 Install the skill with skills.sh:
 
 ```sh
-npx skills add tom-auger/aisdk-dt --skill aisdk-dt-inspector
+npx skills add taugr/aisdk-dt --skill aisdk-dt-inspector
 ```
 
 ## Use The Skill

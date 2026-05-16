@@ -52,6 +52,6 @@ The package publishes:
 
 ## Project Documents
 
-- [Contributing](https://github.com/tom-auger/aisdk-dt/blob/main/CONTRIBUTING.md)
-- [Security](https://github.com/tom-auger/aisdk-dt/blob/main/SECURITY.md)
-- [License](https://github.com/tom-auger/aisdk-dt/blob/main/LICENSE)
+- [Contributing](https://github.com/taugr/aisdk-dt/blob/main/CONTRIBUTING.md)
+- [Security](https://github.com/taugr/aisdk-dt/blob/main/SECURITY.md)
+- [License](https://github.com/taugr/aisdk-dt/blob/main/LICENSE)

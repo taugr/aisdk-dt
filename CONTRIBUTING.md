@@ -12,7 +12,7 @@ Requirements:
 Clone the repo and install dependencies:
 
 ```bash
-git clone https://github.com/tom-auger/aisdk-dt.git
+git clone https://github.com/taugr/aisdk-dt.git
 cd aisdk-dt
 pnpm install
 ```
@@ -68,4 +68,4 @@ pnpm run test
 
 ## Questions
 
-Open an issue at [github.com/tom-auger/aisdk-dt/issues](https://github.com/tom-auger/aisdk-dt/issues).
+Open an issue at [github.com/taugr/aisdk-dt/issues](https://github.com/taugr/aisdk-dt/issues).
