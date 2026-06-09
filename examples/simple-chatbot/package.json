@@ -4,22 +4,22 @@
   "type": "module",
   "scripts": {
     "dev": "rm -rf .next-dev && NEXT_DIST_DIR=.next-dev next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "devtools": "pnpm exec devtools",
     "inspect:runs": "pnpm exec aisdk-dt runs --file .devtools/generations.json --limit 10 --pretty",
     "inspect:tools": "pnpm exec aisdk-dt tools --file .devtools/generations.json"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.85",
-    "ai": "^6.0.168",
-    "next": "^16.2.4",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "@ai-sdk/openai": "^3.0.68",
+    "ai": "^6.0.198",
+    "next": "16.2.7",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@ai-sdk/devtools": "^0.0.15",
+    "@ai-sdk/devtools": "^0.0.18",
     "aisdk-dt": "workspace:*"
   },
   "engines": {
