@@ -1,6 +1,6 @@
 {
   "name": "aisdk-dt",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "CLI for querying AI SDK DevTools generations.json files.",
   "license": "MIT",
   "homepage": "https://github.com/taugr/aisdk-dt#readme",
