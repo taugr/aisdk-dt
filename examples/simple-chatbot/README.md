@@ -9,7 +9,7 @@ This example is a **Next.js app** (App Router) that:
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - `OPENAI_API_KEY` in your environment or in `.env`
 
 Create a local env file from the template:

@@ -11,18 +11,18 @@
     "inspect:tools": "pnpm exec aisdk-dt tools --file .devtools/generations.json"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.70",
-    "ai": "^6.0.202",
+    "@ai-sdk/openai": "^4.0.0",
+    "ai": "^7.0.1",
     "next": "16.2.9",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@ai-sdk/devtools": "^0.0.18",
+    "@ai-sdk/devtools": "^1.0.0",
     "aisdk-dt": "workspace:*"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

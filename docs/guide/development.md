@@ -8,7 +8,7 @@ pnpm install
 
 Requirements:
 
-- Node.js 20+
+- Node.js 22+ for workspace development. The published `aisdk-dt` CLI still supports Node.js 20+.
 - `pnpm` 10+
 
 ## Commands
