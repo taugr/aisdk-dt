@@ -32,8 +32,8 @@
     "build": "tsdown",
     "lint": "oxlint -c oxlint.json .",
     "lint:fix": "oxlint -c oxlint.json . --fix",
-    "format": "oxfmt . --check",
-    "format:fix": "oxfmt . --write",
+    "format": "oxfmt . '!docs/.vitepress/cache/**' --check",
+    "format:fix": "oxfmt . '!docs/.vitepress/cache/**' --write",
     "prepare": "node scripts/prepare.mjs",
     "prepublishOnly": "pnpm run build",
     "release": "bumpp",
@@ -51,20 +51,20 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^26.1.0",
-    "ai": "^7.0.14",
+    "@types/node": "^26.1.1",
+    "ai": "^7.0.19",
     "bumpp": "^11.1.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
-    "oxfmt": "^0.57.0",
-    "oxlint": "^1.72.0",
+    "oxfmt": "^0.58.0",
+    "oxlint": "^1.73.0",
     "oxlint-tsgolint": "^0.24.0",
-    "tsdown": "^0.22.3",
+    "tsdown": "^0.22.4",
     "typescript": "^6.0.3",
     "vitepress": "^1.6.4",
     "vitepress-plugin-group-icons": "^1.7.5",
     "vitepress-plugin-llms": "^1.13.2",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=20"
