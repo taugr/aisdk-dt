@@ -2,15 +2,15 @@
 
 ## Runtime
 
-The published CLI targets Node.js 20 or newer. Repository development, docs,
-and the example app use Node.js 22 or newer.
+The published CLI targets Node.js 20 or newer. Repository development and docs
+use Node.js 22.18 or newer; the example app uses Node.js 22 or newer.
 
 ## Tested AI SDK Surface
 
 The repository fixtures and compatibility tests currently run with:
 
-- `ai` 7.0.30
-- `@ai-sdk/devtools` 1.0.6 in the example app
+- `ai` 7.0.36
+- `@ai-sdk/devtools` 1.0.7 in the example app
 
 Compatible patch/minor releases may work, but these are the exact versions
 covered by the release validation for this documentation.

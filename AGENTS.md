@@ -6,7 +6,8 @@ Guidance for coding agents working in this repository.
 
 - Package manager: `pnpm`
 - CLI runtime baseline: Node.js 20+
-- Workspace development and example app baseline: Node.js 22+
+- Workspace development baseline: Node.js 22.18+
+- Example app baseline: Node.js 22+
 - Project type: TypeScript CLI package (`aisdk-dt`)
 - Workspace layout:
   - `src/`: CLI commands, argument parsing, generation inspection logic

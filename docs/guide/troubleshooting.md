@@ -69,5 +69,6 @@ pnpm --filter aisdk-dt run build
 
 ## Node.js Version Mismatch
 
-The CLI requires Node.js 20+. The repository example requires Node.js 22+.
-Check `node --version` and switch runtimes before reinstalling dependencies.
+The CLI requires Node.js 20+. The repository workspace requires Node.js 22.18+,
+and the example requires Node.js 22+. Check `node --version` and switch
+runtimes before reinstalling dependencies.
