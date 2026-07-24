@@ -6,4 +6,5 @@ docs/.vitepress/dist/
 .devtools/
 generations*.json
 *.log
+.DS_Store
 .env
