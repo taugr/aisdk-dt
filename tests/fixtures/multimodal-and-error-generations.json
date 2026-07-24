@@ -25,7 +25,7 @@
       "provider": "fixture",
       "started_at": "2026-07-24T02:00:00.100Z",
       "duration_ms": 15,
-      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Describe the fixture attachment.\"},{\"type\":\"image\",\"image\":\"data:image/png;base64,fixture\",\"mediaType\":\"image/png\"},{\"type\":\"file\",\"data\":{\"type\":\"text\",\"text\":\"fixture file\"},\"mediaType\":\"text/plain\",\"filename\":\"fixture.txt\"},{\"type\":\"future-part\",\"futureValue\":\"preserve me\"}]}]}",
+      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Describe the fixture attachment.\"},{\"type\":\"image\",\"image\":\"data:image/png;base64,fixture\",\"mediaType\":\"image/png\"},{\"type\":\"file\",\"data\":{\"type\":\"text\",\"text\":\"fixture file\"},\"mediaType\":\"text/plain\",\"filename\":\"fixture.txt\"},{\"type\":\"source\",\"sourceType\":\"url\",\"id\":\"fixture-source\",\"url\":\"https://example.invalid/fixture\",\"title\":\"Fixture source\"},{\"type\":\"future-part\",\"futureValue\":\"preserve me\"}]}]}",
       "output": "{\"finishReason\":\"error\",\"content\":[{\"type\":\"text\",\"text\":\"The attachment is a fixture.\"},{\"type\":\"custom\",\"kind\":\"fixture.metadata\"},{\"type\":\"future-output\",\"futureValue\":true}]}",
       "usage": "{\"inputTokens\":12,\"outputTokens\":5}",
       "error": "Synthetic fixture failure",

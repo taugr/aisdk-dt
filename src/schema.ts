@@ -8,6 +8,7 @@ import type {
   CustomContentPart,
   MediaContentPart,
   ReasoningContentPart,
+  SourceContentPart,
   TextContentPart,
   ToolApprovalContentPart,
   ToolCallContentPart,
@@ -74,6 +75,18 @@ export const mediaContentPartSchema = z
   })
   .passthrough() satisfies z.ZodType<MediaContentPart>;
 
+export const sourceContentPartSchema = z
+  .object({
+    type: z.literal('source'),
+    sourceType: z.string().optional(),
+    id: z.string().optional(),
+    url: z.string().optional(),
+    title: z.string().optional(),
+    mediaType: z.string().optional(),
+    filename: z.string().optional(),
+  })
+  .passthrough() satisfies z.ZodType<SourceContentPart>;
+
 export const customContentPartSchema = z
   .object({
     type: z.literal('custom'),
@@ -116,6 +129,7 @@ export const contentPartSchema = z.union([
   toolResultContentPartSchema,
   reasoningContentPartSchema,
   mediaContentPartSchema,
+  sourceContentPartSchema,
   customContentPartSchema,
   toolApprovalContentPartSchema,
   unknownContentPartSchema,

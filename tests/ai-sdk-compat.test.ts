@@ -13,6 +13,7 @@ import {
   customContentPartSchema,
   mediaContentPartSchema,
   promptMessageSchema,
+  sourceContentPartSchema,
   toolApprovalContentPartSchema,
   toolCallContentPartSchema,
   toolResultContentPartSchema,
@@ -48,6 +49,14 @@ const filePart = {
 const customPart = {
   type: 'custom',
   kind: 'fixture.metadata',
+} satisfies ContentPart<Record<string, never>>;
+
+const sourcePart = {
+  type: 'source',
+  sourceType: 'url',
+  id: 'fixture-source',
+  url: 'https://example.invalid/fixture',
+  title: 'Fixture source',
 } satisfies ContentPart<Record<string, never>>;
 
 const approvalRequest = {
@@ -99,6 +108,7 @@ describe('AI SDK type compatibility checks', () => {
     expect(mediaContentPartSchema.safeParse(imagePart).success).toBe(true);
     expect(mediaContentPartSchema.safeParse(filePart).success).toBe(true);
     expect(customContentPartSchema.safeParse(customPart).success).toBe(true);
+    expect(sourceContentPartSchema.safeParse(sourcePart).success).toBe(true);
     expect(
       toolApprovalContentPartSchema.safeParse(approvalRequest).success,
     ).toBe(true);

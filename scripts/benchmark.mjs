@@ -12,6 +12,9 @@ const temporaryDirectory = fs.mkdtempSync(
 );
 const databasePath = path.join(temporaryDirectory, 'generations.json');
 const cliPath = path.resolve('dist/cli.js');
+const baselineCliPath = process.env.AISDK_DT_BENCHMARK_BASELINE_CLI
+  ? path.resolve(process.env.AISDK_DT_BENCHMARK_BASELINE_CLI)
+  : null;
 
 try {
   const database = makeDatabase(runCount, stepsPerRun);
@@ -26,21 +29,18 @@ try {
     ['timeline', latestRunId],
   ];
 
-  const results = commands.map((args) => {
-    run(args);
-    const timings = [];
-    for (let iteration = 0; iteration < iterations; iteration += 1) {
-      const start = performance.now();
-      run(args);
-      timings.push(performance.now() - start);
-    }
-    return {
-      command: `aisdk-dt ${args.join(' ')}`,
-      meanMs: round(mean(timings)),
-      minMs: round(Math.min(...timings)),
-      maxMs: round(Math.max(...timings)),
-    };
-  });
+  const results = measureCommands(cliPath, commands, true);
+  const baselineResults = baselineCliPath
+    ? measureCommands(baselineCliPath, commands, false)
+    : null;
+  const comparison = baselineResults
+    ? results.map((result, index) => ({
+        command: result.command,
+        baselineMeanMs: baselineResults[index].meanMs,
+        indexedMeanMs: result.meanMs,
+        speedup: round(baselineResults[index].meanMs / result.meanMs),
+      }))
+    : null;
 
   console.log(
     JSON.stringify(
@@ -53,6 +53,15 @@ try {
         },
         iterations,
         results,
+        ...(baselineResults
+          ? {
+              baseline: {
+                cli: baselineCliPath,
+                results: baselineResults,
+              },
+              comparison,
+            }
+          : {}),
       },
       null,
       2,
@@ -62,10 +71,34 @@ try {
   fs.rmSync(temporaryDirectory, { recursive: true, force: true });
 }
 
-function run(args) {
+function measureCommands(binary, commands, supportsOutputBudget) {
+  return commands.map((args) => {
+    run(binary, args, supportsOutputBudget);
+    const timings = [];
+    for (let iteration = 0; iteration < iterations; iteration += 1) {
+      const start = performance.now();
+      run(binary, args, supportsOutputBudget);
+      timings.push(performance.now() - start);
+    }
+    return {
+      command: `aisdk-dt ${args.join(' ')}`,
+      meanMs: round(mean(timings)),
+      minMs: round(Math.min(...timings)),
+      maxMs: round(Math.max(...timings)),
+    };
+  });
+}
+
+function run(binary, args, supportsOutputBudget) {
   const result = spawnSync(
     process.execPath,
-    [cliPath, ...args, '--file', databasePath, '--max-output-chars', '32000'],
+    [
+      binary,
+      ...args,
+      '--file',
+      databasePath,
+      ...(supportsOutputBudget ? ['--max-output-chars', '32000'] : []),
+    ],
     { encoding: 'utf8' },
   );
   if (result.status !== 0) {

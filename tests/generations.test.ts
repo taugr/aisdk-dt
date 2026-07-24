@@ -628,7 +628,9 @@ describe('generations queries', () => {
       'utf8',
     );
 
-    expect(() => readDatabase(badFile)).toThrow('Invalid generations database');
+    expect(() => readDatabase(badFile)).toThrow(
+      /Invalid generations database.*runs\.0\.id.*Confirm this is an AI SDK DevTools generations\.json file/,
+    );
   });
 
   it('ignores malformed output tool-call/message structures safely', () => {

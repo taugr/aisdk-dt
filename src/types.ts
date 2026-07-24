@@ -68,6 +68,17 @@ export interface MediaContentPart {
   [key: string]: unknown;
 }
 
+export interface SourceContentPart {
+  type: 'source';
+  sourceType?: string;
+  id?: string;
+  url?: string;
+  title?: string;
+  mediaType?: string;
+  filename?: string;
+  [key: string]: unknown;
+}
+
 export interface CustomContentPart {
   type: 'custom';
   kind?: string;
@@ -96,6 +107,7 @@ export type ContentPart =
   | ToolResultContentPart
   | ReasoningContentPart
   | MediaContentPart
+  | SourceContentPart
   | CustomContentPart
   | ToolApprovalContentPart
   | UnknownContentPart;

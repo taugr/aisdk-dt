@@ -24,9 +24,9 @@ fields are retained where the schema permits them.
 
 The CLI strictly validates the database envelope but tolerates newer message
 content. It recognizes text, reasoning, tool calls/results, images, files,
-reasoning files, custom parts, and tool-approval parts. An unrecognized content
-part is retained as local metadata with `unsupported: true` instead of making
-the entire database unreadable.
+reasoning files, custom parts, sources, and tool-approval parts. An
+unrecognized content part is retained as local metadata with
+`unsupported: true` instead of making the entire database unreadable.
 
 ## Output Stability
 

@@ -28,6 +28,18 @@ describe('sanitized DevTools fixtures', () => {
         pairedToolResultCount: 1,
       },
     });
+    expect(toolsForTarget(db, 'run-terminal-tool')).toMatchObject({
+      summary: {
+        toolCallCount: 1,
+        unpairedTerminalToolCallCount: 1,
+      },
+      calls: [
+        {
+          toolCallId: 'fixture-terminal-call',
+          relationship: 'terminal-unpaired-call',
+        },
+      ],
+    });
     expect(
       runDetailSummary(db, 'run-tool', { includeChildren: true }),
     ).toMatchObject({
@@ -63,6 +75,13 @@ describe('sanitized DevTools fixtures', () => {
           expect.objectContaining({
             type: 'file',
             filename: 'fixture.txt',
+            unsupported: false,
+          }),
+          expect.objectContaining({
+            type: 'source',
+            sourceType: 'url',
+            sourceId: 'fixture-source',
+            url: 'https://example.invalid/fixture',
             unsupported: false,
           }),
           expect.objectContaining({

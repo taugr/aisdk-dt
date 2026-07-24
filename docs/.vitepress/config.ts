@@ -103,6 +103,7 @@ export default defineConfig({
           { text: 'CLI Reference', link: '/guide/commands' },
           { text: 'Safe Inspection', link: '/guide/safe-inspection' },
           { text: 'Compatibility', link: '/guide/compatibility' },
+          { text: 'Migrating to 0.2', link: '/guide/migrating-to-0.2' },
           { text: 'Development', link: '/guide/development' },
         ],
       },
@@ -150,6 +151,7 @@ export default defineConfig({
           items: [
             { text: 'CLI Reference', link: '/guide/commands' },
             { text: 'Compatibility', link: '/guide/compatibility' },
+            { text: 'Migrating to 0.2', link: '/guide/migrating-to-0.2' },
           ],
         },
         {

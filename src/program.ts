@@ -11,6 +11,7 @@ import {
   outputForStep,
   rawForStep,
   readDatabase,
+  recordedFieldForStep,
   runsNewestFirst,
   runDetailSummary,
   resolveDbPath,
@@ -22,7 +23,6 @@ import {
   usageForTarget,
   buildTraceSpans,
   getByPath,
-  parseJson,
   preview,
   DEFAULT_MAX_DATABASE_BYTES,
 } from './generations.js';
@@ -293,7 +293,9 @@ program
         step as unknown as Record<string, string | null | number>
       )[options.field];
       const parsed =
-        typeof rawValue === 'string' ? parseJson(rawValue) : rawValue;
+        typeof rawValue === 'string' && isSerializedStepField(options.field)
+          ? recordedFieldForStep(step, options.field)
+          : rawValue;
       const selected = options.jsonPath
         ? getByPath(parsed, options.jsonPath)
         : parsed;
@@ -309,10 +311,10 @@ program
     }
     const siblings = stepsForRun(db, step.run_id);
     const summary = stepSummary(step, siblings);
-    const input = parseJson(step.input);
-    const output = parseJson(step.output);
-    const providerOptions = parseJson(step.provider_options);
-    const usage = parseJson(step.usage);
+    const input = recordedFieldForStep(step, 'input');
+    const output = recordedFieldForStep(step, 'output');
+    const providerOptions = recordedFieldForStep(step, 'provider_options');
+    const usage = recordedFieldForStep(step, 'usage');
     const raw = rawForStep(step, {
       maxChars: options.maxChars,
       full: options.full,
@@ -660,6 +662,27 @@ function parsePositiveIntOption(value: string): number {
   const parsed = parseIntegerOption(value);
   if (parsed <= 0) throw new Error(`Expected a positive integer: ${value}`);
   return parsed;
+}
+
+function isSerializedStepField(
+  value: string,
+): value is
+  | 'input'
+  | 'output'
+  | 'usage'
+  | 'raw_request'
+  | 'raw_response'
+  | 'raw_chunks'
+  | 'provider_options' {
+  return [
+    'input',
+    'output',
+    'usage',
+    'raw_request',
+    'raw_response',
+    'raw_chunks',
+    'provider_options',
+  ].includes(value);
 }
 
 function parseOutputLimitOption(value: string): number {

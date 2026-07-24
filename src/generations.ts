@@ -45,6 +45,15 @@ export interface ReadDatabaseOptions {
 }
 
 const databaseIndexes = new WeakMap<Database, DatabaseIndex>();
+type SerializedStepField =
+  | 'input'
+  | 'output'
+  | 'usage'
+  | 'raw_request'
+  | 'raw_response'
+  | 'raw_chunks'
+  | 'provider_options';
+
 const parsedStepFields = new WeakMap<
   Step,
   Partial<
@@ -54,6 +63,11 @@ const parsedStepFields = new WeakMap<
     >
   >
 >();
+const recordedStepFields = new WeakMap<
+  Step,
+  Partial<Record<SerializedStepField, unknown>>
+>();
+const stepPositions = new WeakMap<Step[], Map<string, number>>();
 
 export function resolveDbPath(file?: string): string {
   return path.resolve(
@@ -97,8 +111,11 @@ export function readDatabase(
 
     const result = databaseSchema.safeParse(parsed);
     if (!result.success) {
+      const issue = result.error.issues[0];
+      const issuePath =
+        issue?.path.length === 0 ? '<root>' : issue?.path.join('.');
       throw new Error(
-        `Invalid generations database: ${dbPath} (${result.error.issues[0]?.message ?? 'schema mismatch'})`,
+        `Invalid generations database: ${dbPath} (${issuePath ?? '<unknown>'}: ${issue?.message ?? 'schema mismatch'}). Confirm this is an AI SDK DevTools generations.json file and update aisdk-dt if the recorded envelope has changed.`,
       );
     }
     const database = { runs: result.data.runs, steps: result.data.steps };
@@ -193,7 +210,10 @@ export function parseJson<T = unknown>(
 export function parseInput(
   value: string | null | undefined,
 ): ParsedInput | null {
-  const parsed = parseJson<unknown>(value);
+  return parseInputValue(parseJson<unknown>(value));
+}
+
+function parseInputValue(parsed: unknown): ParsedInput | null {
   const result = parsedInputSchema.safeParse(parsed);
   return result.success ? result.data : null;
 }
@@ -201,7 +221,10 @@ export function parseInput(
 export function parseOutput(
   value: string | null | undefined,
 ): ParsedOutput | null {
-  const parsed = parseJson<unknown>(value);
+  return parseOutputValue(parseJson<unknown>(value));
+}
+
+function parseOutputValue(parsed: unknown): ParsedOutput | null {
   const result = parsedOutputSchema.safeParse(parsed);
   return result.success ? result.data : null;
 }
@@ -209,28 +232,51 @@ export function parseOutput(
 export function parseUsage(
   value: string | null | undefined,
 ): ParsedUsage | null {
-  const parsed = parseJson<unknown>(value);
+  return parseUsageValue(parseJson<unknown>(value));
+}
+
+function parseUsageValue(parsed: unknown): ParsedUsage | null {
   const result = parsedUsageSchema.safeParse(parsed);
   return result.success ? result.data : null;
 }
 
 function inputForStep(step: Step): ParsedInput | null {
-  return cachedStepField(step, 'input', () => parseInput(step.input));
+  return cachedStepField(step, 'input', () =>
+    parseInputValue(recordedFieldForStep(step, 'input')),
+  );
 }
 
 function outputForStepValue(step: Step): ParsedOutput | null {
-  return cachedStepField(step, 'output', () => parseOutput(step.output));
+  return cachedStepField(step, 'output', () =>
+    parseOutputValue(recordedFieldForStep(step, 'output')),
+  );
 }
 
 function usageForStepValue(step: Step): ParsedUsage | null {
-  return cachedStepField(step, 'usage', () => parseUsage(step.usage));
+  return cachedStepField(step, 'usage', () =>
+    parseUsageValue(recordedFieldForStep(step, 'usage')),
+  );
 }
 
 function rawFieldForStep(
   step: Step,
   field: 'raw_response' | 'raw_chunks',
 ): unknown {
-  return cachedStepField(step, field, () => parseJson(step[field]));
+  return recordedFieldForStep(step, field);
+}
+
+export function recordedFieldForStep(
+  step: Step,
+  field: SerializedStepField,
+): unknown {
+  const cached = recordedStepFields.get(step) ?? {};
+  if (Object.prototype.hasOwnProperty.call(cached, field)) {
+    return cached[field];
+  }
+  const value = parseJson(step[field]);
+  cached[field] = value;
+  recordedStepFields.set(step, cached);
+  return value;
 }
 
 function cachedStepField<T>(
@@ -568,7 +614,7 @@ export function toolResultsFromNextStep(
   step: Step,
   siblingSteps: Step[],
 ): ToolResultContentPart[] {
-  const index = siblingSteps.findIndex((candidate) => candidate.id === step.id);
+  const index = stepPositionFor(siblingSteps, step.id);
   const nextStep = index >= 0 ? siblingSteps[index + 1] : undefined;
   const input = nextStep ? inputForStep(nextStep) : null;
   return (
@@ -579,8 +625,17 @@ export function toolResultsFromNextStep(
 }
 
 function nextStep(step: Step, siblingSteps: Step[]): Step | undefined {
-  const index = siblingSteps.findIndex((candidate) => candidate.id === step.id);
+  const index = stepPositionFor(siblingSteps, step.id);
   return index >= 0 ? siblingSteps[index + 1] : undefined;
+}
+
+function stepPositionFor(steps: Step[], stepId: string): number {
+  let positions = stepPositions.get(steps);
+  if (!positions) {
+    positions = new Map(steps.map((step, index) => [step.id, index]));
+    stepPositions.set(steps, positions);
+  }
+  return positions.get(stepId) ?? -1;
 }
 
 function summarizeToolCalls(toolCalls: ToolCallContentPart[]): {
@@ -1409,6 +1464,10 @@ function normalizeMessage(
       type: part.type ?? 'unknown',
       mediaType: 'mediaType' in part ? part.mediaType : undefined,
       filename: 'filename' in part ? part.filename : undefined,
+      sourceType: 'sourceType' in part ? part.sourceType : undefined,
+      sourceId: 'id' in part ? part.id : undefined,
+      url: 'url' in part ? part.url : undefined,
+      title: 'title' in part ? part.title : undefined,
       kind: 'kind' in part ? part.kind : undefined,
       approvalId: 'approvalId' in part ? part.approvalId : undefined,
       unsupported: 'unsupported' in part ? part.unsupported : false,

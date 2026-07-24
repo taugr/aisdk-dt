@@ -13,6 +13,13 @@
       "parent_run_id": "run-tool",
       "parent_step_id": "step-tool-call",
       "function_id": "child-lookup"
+    },
+    {
+      "id": "run-terminal-tool",
+      "started_at": "2026-07-24T01:01:00.000Z",
+      "parent_run_id": null,
+      "parent_step_id": null,
+      "function_id": "terminal-tool-chat"
     }
   ],
   "steps": [
@@ -64,6 +71,24 @@
       "input": "{\"prompt\":[{\"role\":\"user\",\"content\":\"Resolve the nested fixture.\"}]}",
       "output": null,
       "usage": null,
+      "error": null,
+      "raw_request": null,
+      "raw_response": null,
+      "raw_chunks": null,
+      "provider_options": null
+    },
+    {
+      "id": "step-terminal-tool",
+      "run_id": "run-terminal-tool",
+      "step_number": 1,
+      "type": "generate",
+      "model_id": "fixture-model",
+      "provider": "fixture",
+      "started_at": "2026-07-24T01:01:00.100Z",
+      "duration_ms": 18,
+      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":\"Start a terminal fixture tool call.\"}],\"tools\":[{\"name\":\"terminalFixture\",\"description\":\"End with an unpaired fixture call.\"}]}",
+      "output": "{\"finishReason\":\"tool-calls\",\"content\":[{\"type\":\"tool-call\",\"toolName\":\"terminalFixture\",\"toolCallId\":\"fixture-terminal-call\",\"input\":{\"value\":\"fixture\"}}]}",
+      "usage": "{\"inputTokens\":7,\"outputTokens\":3}",
       "error": null,
       "raw_request": null,
       "raw_response": null,

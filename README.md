@@ -313,6 +313,9 @@ pnpm run test:package
 See the [full documentation](https://taugr.github.io/aisdk-dt/) for
 compatibility, troubleshooting, and development benchmarks.
 
+Upgrading from 0.1? Review the
+[0.2 migration guide](https://taugr.github.io/aisdk-dt/guide/migrating-to-0.2).
+
 ## Project
 
 - [Contributing](./CONTRIBUTING.md)

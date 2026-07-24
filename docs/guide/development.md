@@ -59,14 +59,27 @@ The package publishes:
 `pnpm run benchmark` generates a synthetic database with high step counts,
 nested runs, tool data, and 2,000-character raw payloads. Override its size with
 `AISDK_DT_BENCHMARK_RUNS`, `AISDK_DT_BENCHMARK_STEPS`, and
-`AISDK_DT_BENCHMARK_ITERATIONS`.
+`AISDK_DT_BENCHMARK_ITERATIONS`. Set `AISDK_DT_BENCHMARK_BASELINE_CLI` to an
+older built CLI entrypoint to include before/after measurements.
 
-On the 2026-07-24 development run, a 2,000-run/8,000-step database was 22.9 MB.
-Warm subprocess measurements for `runs`, `inspect`, `messages`, `tools`,
-`usage`, and `timeline` were 124–127 ms (two measured iterations). Query
-indexes and per-step parse caches made query work small relative to full-file
-read/schema validation, so streaming parsing was not adopted without stronger
-evidence.
+On the 2026-07-24 release benchmark, a 2,000-run/8,000-step database was
+22.9 MB. Comparing 0.2.0 with the published 0.1.3 CLI over two measured
+iterations:
+
+| Command                        |    0.1.3 |    0.2.0 |      Change |
+| ------------------------------ | -------: | -------: | ----------: |
+| `runs --limit 10`              | 294.9 ms | 126.1 ms | 2.3x faster |
+| `inspect run-1999`             | 119.3 ms | 135.0 ms |        0.9x |
+| `messages run-1999 --limit 12` | 129.1 ms | 132.0 ms |        1.0x |
+| `tools run-1999`               | 115.8 ms | 126.8 ms |        0.9x |
+| `usage run-1999`               | 115.3 ms | 136.9 ms |        0.8x |
+| `timeline run-1999`            | 125.7 ms | 125.1 ms |        1.0x |
+
+The index materially improves broad run listing. Targeted single-run commands
+remain dominated by full-file read and schema validation, with roughly flat to
+modestly slower subprocess times after the additional safety checks in 0.2.0.
+Streaming parsing was not adopted without stronger evidence that its added
+complexity would improve those end-to-end paths.
 
 ## Project Documents
 

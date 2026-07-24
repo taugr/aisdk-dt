@@ -107,6 +107,20 @@ describe('CLI contract', () => {
     expect(contentResult.stdout).toContain('textContent');
   });
 
+  it('returns selected complete content only with an explicit --full', () => {
+    const result = runCli([
+      'raw',
+      'step-basic',
+      '--response',
+      '--full',
+      '--file',
+      fixturePath('basic-generations.json'),
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('fixture-response');
+  });
+
   it.each([
     [['runs', '--limit', '0'], 'Expected a positive integer'],
     [['runs', '--offset', '-1'], 'Expected a non-negative integer'],

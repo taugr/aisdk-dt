@@ -77,6 +77,48 @@ describe('bounded output policy', () => {
     expect(() => JSON.parse(output)).not.toThrow();
   });
 
+  it('limits arrays with explicit omitted-item metadata', () => {
+    const parsed = JSON.parse(
+      stringifyBoundedOutput(
+        { values: Array.from({ length: 80 }, (_, index) => index) },
+        { maxOutputChars: 4_000 },
+      ),
+    ) as { values: Array<unknown> };
+
+    expect(parsed.values).toHaveLength(51);
+    expect(parsed.values.at(-1)).toEqual({
+      truncated: true,
+      totalItems: 80,
+      omittedItems: 30,
+    });
+  });
+
+  it('stops deeply nested unknown data with valid metadata', () => {
+    const value = { level: {} as Record<string, unknown> };
+    let cursor = value.level;
+    for (let depth = 0; depth < 20; depth += 1) {
+      cursor.child = {};
+      cursor = cursor.child as Record<string, unknown>;
+    }
+    const rendered = stringifyBoundedOutput(value, {
+      maxDepth: 4,
+      maxOutputChars: 2_000,
+    });
+
+    expect(JSON.parse(rendered)).toMatchObject({
+      level: {
+        child: {
+          child: {
+            child: {
+              truncated: true,
+              reason: 'max-depth',
+            },
+          },
+        },
+      },
+    });
+  });
+
   it('enforces the text output bound', () => {
     const output = boundRenderedText(`${longPrefix}${hiddenCanary}`, {
       maxOutputChars: 1_000,
