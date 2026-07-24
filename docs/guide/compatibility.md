@@ -3,7 +3,7 @@
 ## Runtime
 
 The published CLI targets Node.js 20 or newer. Repository development and docs
-use Node.js 22.18 or newer; the example app uses Node.js 22 or newer.
+use Node.js 22.18+, 24.11+, or 26+; the example app uses Node.js 22 or newer.
 
 ## Tested AI SDK Surface
 
