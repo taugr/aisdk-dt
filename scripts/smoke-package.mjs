@@ -17,7 +17,7 @@ const consumerDirectory = path.join(temporaryRoot, 'consumer');
 
 try {
   fs.mkdirSync(consumerDirectory, { recursive: true });
-  run('pnpm', ['pack', '--pack-destination', temporaryRoot], projectRoot);
+  runPnpm(['pack', '--pack-destination', temporaryRoot], projectRoot);
 
   const tarball = fs
     .readdirSync(temporaryRoot)
@@ -28,8 +28,7 @@ try {
     path.join(consumerDirectory, 'package.json'),
     JSON.stringify({ name: 'aisdk-dt-smoke-consumer', private: true }),
   );
-  run(
-    'pnpm',
+  runPnpm(
     ['add', '--offline', '--ignore-scripts', path.join(temporaryRoot, tarball)],
     consumerDirectory,
   );
@@ -73,6 +72,10 @@ try {
   console.log('Packed package smoke test passed.');
 } finally {
   fs.rmSync(temporaryRoot, { recursive: true, force: true });
+}
+
+function runPnpm(args, cwd) {
+  return run('corepack', ['pnpm', ...args], cwd);
 }
 
 function run(command, args, cwd) {

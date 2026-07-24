@@ -35,12 +35,12 @@
     "format": "oxfmt . '!docs/.vitepress/cache/**' --check",
     "format:fix": "oxfmt . '!docs/.vitepress/cache/**' --write",
     "prepare": "node scripts/prepare.mjs",
-    "prepublishOnly": "pnpm run build",
-    "pretest": "pnpm run build",
+    "prepublishOnly": "corepack pnpm run build",
+    "pretest": "corepack pnpm run build",
     "release": "bumpp",
     "test": "vitest --run",
     "typecheck": "tsc --noEmit",
-    "benchmark": "pnpm run build && node scripts/benchmark.mjs",
+    "benchmark": "corepack pnpm run build && node scripts/benchmark.mjs",
     "test:package": "node scripts/smoke-package.mjs",
     "test:watch": "vitest",
     "docs:dev": "vitepress dev docs",
@@ -73,5 +73,5 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@11.13.1+sha512.b2fc7683b8a6525414e7d13e1ba28caaddde96bf66ec540bfaeb7e702b81f3e0be4d1f295edf7f9fe0396740a8dce4509c582ddf79891f4543fea32d37645f25"
+  "packageManager": "pnpm@11.17.0+sha512.cca3cea332ad254bb84145f966d19f4879615210346fc92c79a047f23a0d7b3cca3c3792f0076ba1f1831d277efbcf0a9119b31a9a60eca7fb3d6231f331ef72"
 }

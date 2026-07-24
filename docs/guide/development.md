@@ -9,7 +9,7 @@ pnpm install
 Requirements:
 
 - Node.js 22+ for workspace development. The published `aisdk-dt` CLI still supports Node.js 20+.
-- `pnpm` 10+
+- Corepack, using the project-pinned `pnpm` version
 
 ## Commands
 
