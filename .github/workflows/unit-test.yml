@@ -13,7 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22]
+        include:
+          - node: 20
+            pnpm: 10.28.1
+          - node: 22
+            pnpm: 11.13.1
 
     steps:
       - name: Checkout
@@ -21,6 +25,8 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6.0.9
+        with:
+          version: ${{ matrix.pnpm }}
 
       - name: Set Node
         uses: actions/setup-node@v7
