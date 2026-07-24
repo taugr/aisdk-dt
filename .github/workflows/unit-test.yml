@@ -8,16 +8,8 @@ on:
 
 jobs:
   test:
-    name: Test (Node ${{ matrix.node }})
+    name: Test (Node 22)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - node: 20
-            pnpm: 10.28.1
-          - node: 22
-            pnpm: 11.13.1
 
     steps:
       - name: Checkout
@@ -25,13 +17,11 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6.0.9
-        with:
-          version: ${{ matrix.pnpm }}
 
       - name: Set Node
         uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: pnpm
 
       - name: Install
@@ -89,5 +79,40 @@ jobs:
       - name: Check package contents
         run: pnpm pack --dry-run
 
+      - name: Create runtime artifact
+        run: pnpm pack --pack-destination artifacts
+
+      - name: Upload runtime artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-tarball
+          path: artifacts/*.tgz
+
       - name: Check whitespace
         run: git diff --check
+
+  runtime-node-20:
+    name: Packed CLI runtime (Node 20)
+    needs: quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
+      - name: Download package
+        uses: actions/download-artifact@v8
+        with:
+          name: package-tarball
+          path: package
+
+      - name: Install and exercise packed CLI
+        run: |
+          mkdir consumer
+          cd consumer
+          npm init --yes
+          npm install --ignore-scripts ../package/*.tgz
+          npx --no-install aisdk-dt --version
+          npx --no-install aisdk-dt --help
