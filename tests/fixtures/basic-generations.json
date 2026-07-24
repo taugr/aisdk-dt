@@ -1,0 +1,31 @@
+{
+  "runs": [
+    {
+      "id": "run-basic",
+      "started_at": "2026-07-24T00:00:00.000Z",
+      "parent_run_id": null,
+      "parent_step_id": null,
+      "function_id": "basic-chat"
+    }
+  ],
+  "steps": [
+    {
+      "id": "step-basic",
+      "run_id": "run-basic",
+      "step_number": 1,
+      "type": "generate",
+      "model_id": "fixture-model",
+      "provider": "fixture",
+      "started_at": "2026-07-24T00:00:00.100Z",
+      "duration_ms": 25,
+      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":\"Summarize the fixture.\"}]}",
+      "output": "{\"finishReason\":\"stop\",\"content\":[{\"type\":\"text\",\"text\":\"Fixture complete.\"}]}",
+      "usage": "{\"inputTokens\":8,\"outputTokens\":3}",
+      "error": null,
+      "raw_request": "{\"model\":\"fixture-model\"}",
+      "raw_response": "{\"id\":\"fixture-response\"}",
+      "raw_chunks": null,
+      "provider_options": null
+    }
+  ]
+}

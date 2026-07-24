@@ -5,8 +5,11 @@
 ## Global Options
 
 - `--file <path>`: path to `generations.json`; defaults to `.devtools/generations.json`
+- `--max-file-bytes <number>`: maximum database size; defaults to 104,857,600 bytes (100 MiB)
+- `--max-output-chars <number>`: maximum total output unless an explicit `--full` is used; minimum 256 and default 32,000
 - `--pretty`: pretty-print JSON
 - `--text`: compact human-readable output where supported
+- `--version`: print the package version
 
 ## Default Inspection
 
@@ -22,7 +25,8 @@ and diagnostics.
 
 ## `inspect [runId]`
 
-Inspect a run with recent messages, tools, usage, and timeline data.
+Inspect a run with tools, usage, diagnostics, and timeline data. Messages are
+included only when `--messages <number>` is supplied.
 The output includes a `narrative` section with a compact summary, final output,
 tool sequence, and diagnosis when available.
 
@@ -75,9 +79,11 @@ Options:
 - `--function <functionId>`: filter runs by function id substring
 - `--since <iso>`: only include runs started at or after this time
 - `--until <iso>`: only include runs started at or before this time
+- `--json-path <path>`: select a dot/bracket path from the result
 
 ```sh
 aisdk-dt runs --limit 10 --errors --file <path>
+aisdk-dt runs --limit 1 --json-path 'runs[0].id' --text --file <path>
 ```
 
 ## `run [runId]`
@@ -132,7 +138,7 @@ Options:
 - `--all`: allow `--latest` to select child runs
 - `--limit <number>`: number of latest messages
 - `--role <role>`: filter by `user`, `assistant`, `system`, or `tool`
-- `--parts <parts>`: comma-separated parts, such as `text`, `reasoning`, `tool-calls`, or `tool-results`
+- `--parts <parts>`: comma-separated `text`, `reasoning`, `tool-calls`, `tool-results`, `attachments`, or `unknown`
 - `--include-system`: include system messages
 - `--usage-per-message`: include usage on every rendered message
 - `--max-chars <number>`: maximum preview characters
@@ -216,11 +222,21 @@ aisdk-dt raw <stepId> --response --json-path 'content[0]' --max-chars 800 --file
 
 ## `timeline [runId]`
 
-Emit trace timeline spans for a run.
+Emit trace timeline spans for a run. Reasoning and text content are omitted by
+default.
+
+Options:
+
+- `--latest`: inspect the latest root run
+- `--all`: allow `--latest` to select child runs
+- `--include-content`: include bounded reasoning and text content
+- `--max-chars <number>`: maximum preview characters for included content
+- `--full`: emit complete timeline content
 
 ```sh
 aisdk-dt timeline <runId> --file <path>
 aisdk-dt timeline --latest --file <path>
+aisdk-dt timeline <runId> --include-content --max-chars 500 --file <path>
 ```
 
 ## `events <stepId>`
@@ -244,4 +260,8 @@ aisdk-dt events <stepId> --chunks --type response.created --file <path>
 
 ## Output Modes
 
-By default, commands emit compact JSON. Use `--pretty` for readable JSON and `--text` for compact human-readable output where supported.
+By default, commands emit compact JSON. Use `--pretty` for readable JSON and
+`--text` for compact human-readable output where supported. Long values carry
+explicit `preview`, `truncated`, and original `chars` metadata. Arrays report
+omitted item counts, and a final valid-JSON fallback is used if the configured
+total output budget is reached.

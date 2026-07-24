@@ -178,13 +178,22 @@ Want a concrete, end-to-end demo? Start with this first example:
 Global options:
 
 - `--file <path>`: path to `generations.json`; defaults to `.devtools/generations.json`
+- `--max-file-bytes <number>`: refuse unexpectedly large database files; defaults to 100 MiB
+- `--max-output-chars <number>`: bound total output; minimum 256 and default 32,000 characters unless a command uses `--full`
 - `--pretty`: pretty-print JSON output
 - `--text`: render compact human-readable output where supported
+- `--version`: report the installed package version
 
 List recent runs:
 
 ```bash
 aisdk-dt runs
+```
+
+Select the newest run ID for a script:
+
+```bash
+RUN_ID=$(aisdk-dt runs --limit 1 --json-path 'runs[0].id' --text)
 ```
 
 Useful `runs` filters:
@@ -196,6 +205,7 @@ Useful `runs` filters:
 - `--in-progress` for unfinished runs
 - `--model <model>`, `--provider <provider>`, and `--function <functionId>`
 - `--since <iso>` and `--until <iso>`
+- `--json-path <path>` to select a field from the result
 
 Show compact run detail:
 
@@ -221,7 +231,10 @@ aisdk-dt messages <runId> --limit 6 --max-chars 500
 aisdk-dt output <stepId> --text --max-chars 800
 ```
 
-`messages` can filter by `--role` and `--parts`. `output` can include `--text`, `--reasoning`, and `--tools`.
+`messages` reconstructs a deterministic transcript from cumulative prompts and
+can filter by `--role` and `--parts`. Supported parts include `attachments` and
+`unknown`, so newer AI SDK content remains inspectable without exposing binary
+payloads. `output` can include `--text`, `--reasoning`, and `--tools`.
 
 Query tools and usage:
 
@@ -254,6 +267,21 @@ Emit timeline spans:
 aisdk-dt timeline <runId>
 ```
 
+Timeline content is omitted by default. Add `--include-content --max-chars 500`
+for bounded text/reasoning or use `--full` only for deliberate local access.
+
+## Output and Privacy Contract
+
+Default JSON is structurally bounded: long strings become
+`{"preview":"...","truncated":true,"chars":1234}`, long arrays include omitted
+item counts, and total output is capped by `--max-output-chars`. A `--full`
+option bypasses the total cap only on commands that explicitly offer it.
+
+`runs`, `steps`, `usage`, and the default timeline avoid full prompt or raw
+payload content. `messages`, `output`, `tools`, `events`, `raw`,
+`timeline --include-content`, and any `--full` option can expose sensitive local
+data. Treat generated output as private unless it has been reviewed.
+
 ## Safe Inspection Workflow
 
 Start with bounded semantic commands:
@@ -279,7 +307,11 @@ Use raw data deliberately:
 pnpm install
 pnpm run test
 pnpm run build
+pnpm run test:package
 ```
+
+See the [full documentation](https://taugr.github.io/aisdk-dt/) for
+compatibility, troubleshooting, and development benchmarks.
 
 ## Project
 

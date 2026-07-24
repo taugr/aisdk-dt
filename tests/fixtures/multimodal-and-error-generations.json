@@ -1,0 +1,56 @@
+{
+  "runs": [
+    {
+      "id": "run-multimodal",
+      "started_at": "2026-07-24T02:00:00.000Z",
+      "parent_run_id": null,
+      "parent_step_id": null,
+      "function_id": "multimodal-chat"
+    },
+    {
+      "id": "run-object",
+      "started_at": "2026-07-24T02:01:00.000Z",
+      "parent_run_id": null,
+      "parent_step_id": null,
+      "function_id": "object-generation"
+    }
+  ],
+  "steps": [
+    {
+      "id": "step-multimodal",
+      "run_id": "run-multimodal",
+      "step_number": 1,
+      "type": "generate",
+      "model_id": "fixture-multimodal-model",
+      "provider": "fixture",
+      "started_at": "2026-07-24T02:00:00.100Z",
+      "duration_ms": 15,
+      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Describe the fixture attachment.\"},{\"type\":\"image\",\"image\":\"data:image/png;base64,fixture\",\"mediaType\":\"image/png\"},{\"type\":\"file\",\"data\":{\"type\":\"text\",\"text\":\"fixture file\"},\"mediaType\":\"text/plain\",\"filename\":\"fixture.txt\"},{\"type\":\"future-part\",\"futureValue\":\"preserve me\"}]}]}",
+      "output": "{\"finishReason\":\"error\",\"content\":[{\"type\":\"text\",\"text\":\"The attachment is a fixture.\"},{\"type\":\"custom\",\"kind\":\"fixture.metadata\"},{\"type\":\"future-output\",\"futureValue\":true}]}",
+      "usage": "{\"inputTokens\":12,\"outputTokens\":5}",
+      "error": "Synthetic fixture failure",
+      "raw_request": null,
+      "raw_response": null,
+      "raw_chunks": null,
+      "provider_options": null
+    },
+    {
+      "id": "step-object",
+      "run_id": "run-object",
+      "step_number": 1,
+      "type": "generate",
+      "model_id": "fixture-object-model",
+      "provider": "fixture",
+      "started_at": "2026-07-24T02:01:00.100Z",
+      "duration_ms": 12,
+      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":\"Create fixture JSON.\"}],\"responseFormat\":{\"type\":\"json\"}}",
+      "output": "{\"finishReason\":\"stop\",\"objectText\":\"{\\\"status\\\":\\\"ready\\\"}\"}",
+      "usage": "{\"inputTokens\":6,\"outputTokens\":4}",
+      "error": null,
+      "raw_request": null,
+      "raw_response": null,
+      "raw_chunks": null,
+      "provider_options": null
+    }
+  ]
+}

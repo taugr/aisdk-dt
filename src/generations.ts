@@ -28,6 +28,32 @@ import type {
 } from './types.js';
 
 const DEFAULT_MAX_CHARS = 500;
+export const DEFAULT_MAX_DATABASE_BYTES = 100 * 1024 * 1024;
+
+interface DatabaseIndex {
+  runsById: Map<string, Run>;
+  stepsById: Map<string, Step>;
+  stepsByRunId: Map<string, Step[]>;
+  childRunsByParentId: Map<string, Run[]>;
+  runsNewestFirst: Run[];
+}
+
+export interface ReadDatabaseOptions {
+  maxBytes?: number;
+  attempts?: number;
+  retryDelayMs?: number;
+}
+
+const databaseIndexes = new WeakMap<Database, DatabaseIndex>();
+const parsedStepFields = new WeakMap<
+  Step,
+  Partial<
+    Record<
+      'input' | 'output' | 'usage' | 'raw_response' | 'raw_chunks',
+      unknown
+    >
+  >
+>();
 
 export function resolveDbPath(file?: string): string {
   return path.resolve(
@@ -35,17 +61,122 @@ export function resolveDbPath(file?: string): string {
   );
 }
 
-export function readDatabase(file?: string): Database {
+export function readDatabase(
+  file?: string,
+  options: ReadDatabaseOptions = {},
+): Database {
   const dbPath = resolveDbPath(file);
-  const content = fs.readFileSync(dbPath, 'utf8');
-  const parsed = JSON.parse(content) as unknown;
-  const result = databaseSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new Error(
-      `Invalid generations database: ${dbPath} (${result.error.issues[0]?.message ?? 'schema mismatch'})`,
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_DATABASE_BYTES;
+  const attempts = options.attempts ?? 3;
+  const retryDelayMs = options.retryDelayMs ?? 20;
+
+  let lastSyntaxError: unknown;
+  let previousInvalidSignature: string | undefined;
+  let attemptsMade = 0;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const fileStat = fs.statSync(dbPath);
+    assertDatabaseSize(fileStat.size, maxBytes);
+    const content = fs.readFileSync(dbPath, 'utf8');
+    assertDatabaseSize(Buffer.byteLength(content), maxBytes);
+    attemptsMade += 1;
+    const signature = `${fileStat.size}:${fileStat.mtimeMs}`;
+    if (previousInvalidSignature === signature) break;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content) as unknown;
+    } catch (error) {
+      lastSyntaxError = error;
+      previousInvalidSignature = signature;
+      if (attempt < attempts) {
+        waitSynchronously(retryDelayMs);
+        continue;
+      }
+      break;
+    }
+
+    const result = databaseSchema.safeParse(parsed);
+    if (!result.success) {
+      throw new Error(
+        `Invalid generations database: ${dbPath} (${result.error.issues[0]?.message ?? 'schema mismatch'})`,
+      );
+    }
+    const database = { runs: result.data.runs, steps: result.data.steps };
+    indexFor(database);
+    return database;
+  }
+
+  const detail =
+    lastSyntaxError instanceof Error ? ` (${lastSyntaxError.message})` : '';
+  throw new Error(
+    `Could not parse generations database after ${attemptsMade} read attempts: ${dbPath}. The file may be mid-write; retry shortly.${detail}`,
+  );
+}
+
+function assertDatabaseSize(size: number, maxBytes: number): void {
+  if (size <= maxBytes) return;
+  throw new Error(
+    `Generations database is ${formatBytes(size)}, exceeding the ${formatBytes(maxBytes)} safety limit. Increase --max-file-bytes to inspect it deliberately.`,
+  );
+}
+
+function waitSynchronously(milliseconds: number): void {
+  if (milliseconds <= 0) return;
+  const signal = new Int32Array(new SharedArrayBuffer(4));
+  Atomics.wait(signal, 0, 0, milliseconds);
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+}
+
+function indexFor(db: Database): DatabaseIndex {
+  const cached = databaseIndexes.get(db);
+  if (cached) return cached;
+
+  const runsById = new Map<string, Run>();
+  const stepsById = new Map<string, Step>();
+  const stepsByRunId = new Map<string, Step[]>();
+  const childRunsByParentId = new Map<string, Run[]>();
+
+  for (const run of db.runs) {
+    runsById.set(run.id, run);
+    if (run.parent_run_id) {
+      const children = childRunsByParentId.get(run.parent_run_id) ?? [];
+      children.push(run);
+      childRunsByParentId.set(run.parent_run_id, children);
+    }
+  }
+  for (const step of db.steps) {
+    stepsById.set(step.id, step);
+    const steps = stepsByRunId.get(step.run_id) ?? [];
+    steps.push(step);
+    stepsByRunId.set(step.run_id, steps);
+  }
+  for (const steps of stepsByRunId.values()) {
+    steps.sort((a, b) => a.step_number - b.step_number);
+  }
+  for (const children of childRunsByParentId.values()) {
+    children.sort(
+      (a, b) =>
+        new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
     );
   }
-  return { runs: result.data.runs, steps: result.data.steps };
+
+  const index = {
+    runsById,
+    stepsById,
+    stepsByRunId,
+    childRunsByParentId,
+    runsNewestFirst: [...db.runs].sort(
+      (a, b) =>
+        new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+    ),
+  };
+  databaseIndexes.set(db, index);
+  return index;
 }
 
 export function parseJson<T = unknown>(
@@ -83,6 +214,40 @@ export function parseUsage(
   return result.success ? result.data : null;
 }
 
+function inputForStep(step: Step): ParsedInput | null {
+  return cachedStepField(step, 'input', () => parseInput(step.input));
+}
+
+function outputForStepValue(step: Step): ParsedOutput | null {
+  return cachedStepField(step, 'output', () => parseOutput(step.output));
+}
+
+function usageForStepValue(step: Step): ParsedUsage | null {
+  return cachedStepField(step, 'usage', () => parseUsage(step.usage));
+}
+
+function rawFieldForStep(
+  step: Step,
+  field: 'raw_response' | 'raw_chunks',
+): unknown {
+  return cachedStepField(step, field, () => parseJson(step[field]));
+}
+
+function cachedStepField<T>(
+  step: Step,
+  field: 'input' | 'output' | 'usage' | 'raw_response' | 'raw_chunks',
+  parse: () => T,
+): T {
+  const cached = parsedStepFields.get(step) ?? {};
+  if (Object.prototype.hasOwnProperty.call(cached, field)) {
+    return cached[field] as T;
+  }
+  const value = parse();
+  cached[field] = value;
+  parsedStepFields.set(step, cached);
+  return value;
+}
+
 export function safeParseValue(value: unknown): unknown {
   if (typeof value !== 'string') return value;
   try {
@@ -117,19 +282,14 @@ export function truncateText(text: string, maxLength = 80): string {
   return `${text.slice(0, maxLength).trim()}...`;
 }
 
-export function fieldMeta(
-  value: string | null | undefined,
-  maxChars = 120,
-): {
+export function fieldMeta(value: string | null | undefined): {
   present: boolean;
   chars: number;
-  preview?: string;
 } {
   if (!value) return { present: false, chars: 0 };
   return {
     present: true,
     chars: value.length,
-    preview: value.slice(0, maxChars),
   };
 }
 
@@ -138,44 +298,50 @@ export function isInProgress(steps: Step[]): boolean {
 }
 
 export function stepsForRun(db: Database, runId: string): Step[] {
-  return db.steps
-    .filter((step) => step.run_id === runId)
-    .sort((a, b) => a.step_number - b.step_number);
+  return indexFor(db).stepsByRunId.get(runId) ?? [];
 }
 
 export function findRun(db: Database, runId: string): Run | undefined {
-  return db.runs.find((run) => run.id === runId);
+  return indexFor(db).runsById.get(runId);
 }
 
 export function findStep(db: Database, stepId: string): Step | undefined {
-  return db.steps.find((step) => step.id === stepId);
+  return indexFor(db).stepsById.get(stepId);
 }
 
 export function findLatestRun(
   db: Database,
   options: { includeChildren?: boolean } = {},
 ): Run | undefined {
-  return db.runs
-    .filter((run) => options.includeChildren || !run.parent_run_id)
-    .sort(
-      (a, b) =>
-        new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
-    )[0];
+  return indexFor(db).runsNewestFirst.find(
+    (run) => options.includeChildren || !run.parent_run_id,
+  );
+}
+
+export function runsNewestFirst(db: Database): Run[] {
+  return indexFor(db).runsNewestFirst;
 }
 
 export function buildChildRuns(db: Database, parentRunId: string): ChildRun[] {
-  const children = db.runs
-    .filter((run) => run.parent_run_id === parentRunId)
-    .sort(
-      (a, b) =>
-        new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
-    );
+  return buildChildRunsInternal(db, parentRunId, new Set([parentRunId]));
+}
+
+function buildChildRunsInternal(
+  db: Database,
+  parentRunId: string,
+  ancestors: Set<string>,
+): ChildRun[] {
+  const children = indexFor(db).childRunsByParentId.get(parentRunId) ?? [];
   return children.map((run) => {
     const steps = stepsForRun(db, run.id);
+    const nextAncestors = new Set(ancestors);
+    nextAncestors.add(run.id);
     return {
       run: { ...run, isInProgress: isInProgress(steps) },
       steps,
-      childRuns: buildChildRuns(db, run.id),
+      childRuns: ancestors.has(run.id)
+        ? []
+        : buildChildRunsInternal(db, run.id, nextAncestors),
     };
   });
 }
@@ -236,7 +402,7 @@ export function toolResultsFromContent(
 export function firstUserMessage(steps: Step[], maxChars = 80): string {
   const firstStep = steps[0];
   if (!firstStep) return 'Empty run';
-  const input = parseInput(firstStep.input);
+  const input = inputForStep(firstStep);
   const prompt = input?.prompt;
   if (!Array.isArray(prompt)) return 'No user message';
   const userMsg = prompt.find((message) => message.role === 'user');
@@ -290,7 +456,7 @@ export function usageForStep(step: Step): {
   raw?: unknown;
   full: ParsedUsage | null;
 } {
-  const usage = parseUsage(step.usage);
+  const usage = usageForStepValue(step);
   return {
     input: getInputTokenBreakdown(usage?.inputTokens),
     output: getOutputTokenBreakdown(usage?.outputTokens),
@@ -359,6 +525,7 @@ export function getOutputParts(output: ParsedOutput | null): {
   textParts: TextContentPart[];
   reasoningParts: ReasoningContentPart[];
   toolCalls: ToolCallContentPart[];
+  otherParts: ContentPart[];
   text: string;
   reasoning: string;
 } {
@@ -377,10 +544,19 @@ export function getOutputParts(output: ParsedOutput | null): {
     content.filter(
       (part): part is ToolCallContentPart => part.type === 'tool-call',
     );
+  const otherParts = content.filter(
+    (part) =>
+      part.type !== 'text' &&
+      part.type !== 'thinking' &&
+      part.type !== 'reasoning' &&
+      part.type !== 'tool-call' &&
+      part.type !== 'tool-result',
+  );
   return {
     textParts,
     reasoningParts,
     toolCalls,
+    otherParts,
     text: textParts.map((part) => part.text).join(''),
     reasoning: reasoningParts
       .map((part) => part.text ?? part.thinking ?? part.reasoning ?? '')
@@ -394,7 +570,7 @@ export function toolResultsFromNextStep(
 ): ToolResultContentPart[] {
   const index = siblingSteps.findIndex((candidate) => candidate.id === step.id);
   const nextStep = index >= 0 ? siblingSteps[index + 1] : undefined;
-  const input = nextStep ? parseInput(nextStep.input) : null;
+  const input = nextStep ? inputForStep(nextStep) : null;
   return (
     input?.prompt
       ?.filter((message) => message.role === 'tool')
@@ -436,8 +612,8 @@ export function stepSummary(
   step: Step,
   siblingSteps: Step[] = [],
 ): Record<string, unknown> {
-  const input = parseInput(step.input);
-  const output = parseOutput(step.output);
+  const input = inputForStep(step);
+  const output = outputForStepValue(step);
   const usage = usageForStep(step);
   const finishReason =
     typeof output?.finishReason === 'string'
@@ -486,6 +662,7 @@ export function stepSummary(
       reasoningChars: parts.reasoning.length,
       toolCallCount: parts.toolCalls.length,
       toolResultCount: toolResults.length,
+      otherPartCount: parts.otherParts.length,
       objectTextChars:
         typeof output?.objectText === 'string' ? output.objectText.length : 0,
     },
@@ -513,7 +690,7 @@ export function summarizeRun(
   const providers = [
     ...new Set(steps.map((step) => step.provider).filter(Boolean)),
   ];
-  const childRuns = db.runs.filter((child) => child.parent_run_id === run.id);
+  const childRuns = indexFor(db).childRunsByParentId.get(run.id) ?? [];
   return {
     id: run.id,
     startedAt: run.started_at,
@@ -553,7 +730,9 @@ export function runDetailSummary(
     ...(options.includeChildren
       ? { childRuns: detail.childRuns.map((child) => serializeChildRun(child)) }
       : {}),
-    ...(options.timeline ? { timeline: buildTraceSpans(detail) } : {}),
+    ...(options.timeline
+      ? { timeline: traceSpanSummaries(buildTraceSpans(detail)) }
+      : {}),
   };
 }
 
@@ -583,6 +762,7 @@ export function inspectRun(
       ? 'error'
       : 'success';
   const toolData = toolsForTarget(db, runId, { includeAvailable: false });
+  const inspectionTools = toolDataForInspection(toolData, maxChars);
   const finalOutput = finalOutputForRun(db, runId, { maxChars });
   const eventDiagnostics =
     options.includeEvents && errorStep
@@ -639,7 +819,7 @@ export function inspectRun(
           }),
         }
       : {}),
-    tools: toolData,
+    tools: inspectionTools,
     narrative: buildNarrative({
       status,
       steps,
@@ -649,17 +829,7 @@ export function inspectRun(
       eventDiagnostics,
       maxChars,
     }),
-    timeline: buildTraceSpans(detail).map((span) => ({
-      kind: span.kind,
-      stepId: span.stepId,
-      label: span.label,
-      sublabel: span.sublabel,
-      startMs: span.startMs,
-      durationMs: span.durationMs,
-      tokens: span.tokens,
-      toolCallId: span.toolCallId,
-      isInProgress: span.isInProgress,
-    })),
+    timeline: traceSpanSummaries(buildTraceSpans(detail)),
     diagnostics: {
       lastStepId: lastStep?.id ?? null,
       failureStepId: errorStep?.id ?? null,
@@ -668,6 +838,80 @@ export function inspectRun(
         ? `step ${errorStep.step_number}: ${errorStep.error}`
         : null,
       ...(eventDiagnostics ? { recentEvents: eventDiagnostics } : {}),
+    },
+  };
+}
+
+export function traceSpanSummaries(
+  spans: TraceSpan[],
+  options: { includeContent?: boolean; full?: boolean; maxChars?: number } = {},
+): Array<Record<string, unknown>> {
+  const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
+  return spans.map((span) => ({
+    kind: span.kind,
+    stepId: span.stepId,
+    label: span.label,
+    sublabel: span.sublabel,
+    startMs: span.startMs,
+    durationMs: span.durationMs,
+    depth: span.depth,
+    tokens: span.tokens,
+    modelId: span.modelId,
+    toolCallId: span.toolCallId,
+    isInProgress: span.isInProgress,
+    ...(options.includeContent || options.full
+      ? {
+          thinkingText: options.full
+            ? span.thinkingText
+            : preview(span.thinkingText, maxChars),
+          textContent: options.full
+            ? span.textContent
+            : preview(span.textContent, maxChars),
+        }
+      : {}),
+  }));
+}
+
+function toolDataForInspection(
+  toolData: Record<string, unknown>,
+  maxChars: number,
+): Record<string, unknown> {
+  const calls = Array.isArray(toolData.calls)
+    ? (toolData.calls as Array<Record<string, unknown>>)
+    : [];
+  const results = Array.isArray(toolData.results)
+    ? (toolData.results as Array<Record<string, unknown>>)
+    : [];
+  const limit = 20;
+  return {
+    targetType: toolData.targetType,
+    targetId: toolData.targetId,
+    calls: calls.slice(-limit).map((call) => ({
+      stepId: call.stepId,
+      stepNumber: call.stepNumber,
+      toolName: call.toolName,
+      toolCallId: call.toolCallId,
+      relationship: call.relationship,
+      args: preview(safeParseValue(call.args ?? call.input), maxChars),
+    })),
+    results: results.slice(-limit).map((result) => ({
+      sourceStepId: result.sourceStepId,
+      sourceStepNumber: result.sourceStepNumber,
+      originalCallStepId: result.originalCallStepId,
+      originalCallStepNumber: result.originalCallStepNumber,
+      observedInStepId: result.observedInStepId,
+      observedInStepNumber: result.observedInStepNumber,
+      toolName: result.toolName,
+      toolCallId: result.toolCallId,
+      relationship: result.relationship,
+      result: preview(safeParseValue(result.result ?? result.output), maxChars),
+    })),
+    summary: {
+      ...(toolData.summary as Record<string, unknown>),
+      returnedToolCallCount: Math.min(calls.length, limit),
+      returnedToolResultCount: Math.min(results.length, limit),
+      omittedToolCallCount: Math.max(0, calls.length - limit),
+      omittedToolResultCount: Math.max(0, results.length - limit),
     },
   };
 }
@@ -734,7 +978,7 @@ export function finalOutputForRun(
   const maxChars = options.maxChars ?? 2000;
   const steps = stepsForRun(db, runId);
   for (const step of [...steps].reverse()) {
-    const output = parseOutput(step.output);
+    const output = outputForStepValue(step);
     if (!output) continue;
     const parts = getOutputParts(output);
     const hasText = parts.text.length > 0;
@@ -817,7 +1061,7 @@ function serializeChildRun(child: ChildRun): Record<string, unknown> {
 }
 
 export function availableToolsFromStep(step: Step): ToolDefinition[] {
-  const input = parseInput(step.input);
+  const input = inputForStep(step);
   return input?.tools ?? [];
 }
 
@@ -841,7 +1085,7 @@ export function allToolDataForStep(
     }
   >;
 } {
-  const output = parseOutput(step.output);
+  const output = outputForStepValue(step);
   const outputCalls = getOutputParts(output).toolCalls;
   const followingResults = toolResultsFromNextStep(step, siblingSteps);
   const resultIds = new Set(
@@ -988,7 +1232,7 @@ function terminalToolInputCallsFromEvents(
 }
 
 function rawEventsForStep(step: Step): Array<Record<string, unknown>> {
-  const parsed = parseJson(step.raw_response);
+  const parsed = rawFieldForStep(step, 'raw_response');
   const events = Array.isArray(parsed)
     ? parsed
     : parsed == null
@@ -1017,7 +1261,7 @@ function findOriginalCallStepNumber(
 ): number | undefined {
   if (!result.toolCallId) return undefined;
   return siblingSteps.find((candidate) => {
-    const output = parseOutput(candidate.output);
+    const output = outputForStepValue(candidate);
     return getOutputParts(output).toolCalls.some(
       (call) => call.toolCallId === result.toolCallId,
     );
@@ -1037,12 +1281,15 @@ export function getMessagesForRun(
   } = {},
 ): Array<Record<string, unknown>> {
   const steps = stepsForRun(db, runId);
-  const messages: Array<Record<string, unknown>> = steps.flatMap((step) => {
-    const input = parseInput(step.input);
-    const usage = usageForStep(step);
-    return (input?.prompt ?? []).map((message, index) => ({
-      stepId: step.id,
-      stepNumber: step.step_number,
+  const messages: Array<Record<string, unknown>> = reconstructTranscript(
+    steps,
+  ).map(({ message, index, firstSeenStep, observedStep }) => {
+    const usage = usageForStep(observedStep);
+    return {
+      stepId: observedStep.id,
+      stepNumber: observedStep.step_number,
+      firstSeenStepId: firstSeenStep.id,
+      firstSeenStepNumber: firstSeenStep.step_number,
       index,
       ...normalizeMessage(message, options.maxChars ?? DEFAULT_MAX_CHARS),
       ...(options.withUsage
@@ -1054,7 +1301,7 @@ export function getMessagesForRun(
             },
           }
         : {}),
-    }));
+    };
   });
   const filtered = messages.filter((message) => {
     if (!options.includeSystem && message.role === 'system') return false;
@@ -1065,12 +1312,57 @@ export function getMessagesForRun(
       (wanted.has('text') && Boolean(message.text)) ||
       (wanted.has('reasoning') && Boolean(message.reasoning)) ||
       (wanted.has('tool-calls') && Number(message.toolCallCount) > 0) ||
-      (wanted.has('tool-results') && Number(message.toolResultCount) > 0)
+      (wanted.has('tool-results') && Number(message.toolResultCount) > 0) ||
+      (wanted.has('attachments') && Number(message.attachmentCount) > 0) ||
+      (wanted.has('unknown') && Number(message.unsupportedPartCount) > 0)
     );
   });
   return typeof options.limit === 'number'
     ? filtered.slice(-options.limit)
     : filtered;
+}
+
+function reconstructTranscript(steps: Step[]): Array<{
+  message: PromptMessage;
+  index: number;
+  firstSeenStep: Step;
+  observedStep: Step;
+}> {
+  const ordered: Array<{
+    key: string;
+    message: PromptMessage;
+    index: number;
+    firstSeenStep: Step;
+    observedStep: Step;
+  }> = [];
+  const firstSeenByKey = new Map<string, Step>();
+
+  for (const step of steps) {
+    const prompt = inputForStep(step)?.prompt ?? [];
+    const occurrences = new Map<string, number>();
+    for (const [index, message] of prompt.entries()) {
+      const fingerprint = JSON.stringify({
+        role: message.role,
+        content: message.content,
+      });
+      const occurrence = occurrences.get(fingerprint) ?? 0;
+      occurrences.set(fingerprint, occurrence + 1);
+      const key = `${fingerprint}#${occurrence}`;
+      const firstSeenStep = firstSeenByKey.get(key) ?? step;
+      firstSeenByKey.set(key, firstSeenStep);
+      const existingIndex = ordered.findIndex((entry) => entry.key === key);
+      if (existingIndex >= 0) ordered.splice(existingIndex, 1);
+      ordered.push({
+        key,
+        message,
+        index,
+        firstSeenStep,
+        observedStep: step,
+      });
+    }
+  }
+
+  return ordered;
 }
 
 function normalizeMessage(
@@ -1081,17 +1373,46 @@ function normalizeMessage(
   const toolResults = toolResultsFromContent(message.content);
   const text = textFromContent(message.content);
   const reasoning = reasoningFromContent(message.content);
+  const otherParts = Array.isArray(message.content)
+    ? message.content.filter(
+        (part) =>
+          part.type !== 'text' &&
+          part.type !== 'thinking' &&
+          part.type !== 'reasoning' &&
+          part.type !== 'tool-call' &&
+          part.type !== 'tool-result',
+      )
+    : [];
+  const attachmentCount = otherParts.filter(
+    (part) =>
+      part.type === 'image' ||
+      part.type === 'file' ||
+      part.type === 'reasoning-file',
+  ).length;
+  const unsupportedPartCount = otherParts.filter(
+    (part) => 'unsupported' in part && part.unsupported === true,
+  ).length;
   return {
     role: message.role,
-    partCount:
-      (text ? 1 : 0) +
-      (reasoning ? 1 : 0) +
-      toolCalls.length +
-      toolResults.length,
+    partCount: Array.isArray(message.content)
+      ? message.content.length
+      : message.content
+        ? 1
+        : 0,
     text: preview(text, maxChars),
     reasoning: preview(reasoning, maxChars),
     toolCallCount: toolCalls.length,
     toolResultCount: toolResults.length,
+    attachmentCount,
+    unsupportedPartCount,
+    otherParts: otherParts.map((part) => ({
+      type: part.type ?? 'unknown',
+      mediaType: 'mediaType' in part ? part.mediaType : undefined,
+      filename: 'filename' in part ? part.filename : undefined,
+      kind: 'kind' in part ? part.kind : undefined,
+      approvalId: 'approvalId' in part ? part.approvalId : undefined,
+      unsupported: 'unsupported' in part ? part.unsupported : false,
+    })),
     toolCalls: toolCalls.map((call) => ({
       toolName: call.toolName,
       toolCallId: call.toolCallId,
@@ -1117,7 +1438,7 @@ export function outputForStep(
   } = {},
 ): Record<string, unknown> {
   const maxChars = options.maxChars ?? DEFAULT_MAX_CHARS;
-  const output = parseOutput(step.output);
+  const output = outputForStepValue(step);
   if (!output) return { stepId: step.id, output: null, error: step.error };
   const parts = getOutputParts(output);
   const results = toolResultsFromNextStep(step, siblingSteps);
@@ -1274,8 +1595,10 @@ export function eventsForStep(
   } = {},
 ): Record<string, unknown> {
   const source = options.source ?? 'response';
-  const rawValue = source === 'chunks' ? step.raw_chunks : step.raw_response;
-  const parsed = parseJson(rawValue);
+  const parsed = rawFieldForStep(
+    step,
+    source === 'chunks' ? 'raw_chunks' : 'raw_response',
+  );
   const events = Array.isArray(parsed)
     ? parsed
     : parsed == null
@@ -1467,7 +1790,7 @@ export function buildTraceSpans(runDetail: RunDetail): TraceSpan[] {
       const stepStartMs = new Date(step.started_at).getTime() - traceStart;
       const durationMs = step.duration_ms ?? 0;
       const usage = usageForStep(step);
-      const output = parseOutput(step.output);
+      const output = outputForStepValue(step);
       const parts = getOutputParts(output);
       const label = functionId || step.model_id || 'LLM call';
       spans.push({

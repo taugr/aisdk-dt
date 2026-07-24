@@ -24,6 +24,12 @@ aisdk-dt inspect <runId> --file <path>
 aisdk-dt runs --limit 10 --file <path>
 ```
 
+Select the latest ID for subsequent shell commands:
+
+```sh
+RUN_ID=$(aisdk-dt runs --limit 1 --json-path 'runs[0].id' --text --file <path>)
+```
+
 Include child runs:
 
 ```sh
@@ -35,6 +41,14 @@ aisdk-dt runs --all --children --limit 20 --file <path>
 ```sh
 aisdk-dt runs --errors --file <path>
 aisdk-dt runs --in-progress --file <path>
+```
+
+A failed inspection stays compact and identifies the failure point:
+
+```text
+run run_123 status=error started=2026-07-24T08:15:00.000Z
+summary=Run error at step 2: provider request failed.
+likelyFailurePoint=step 2: provider request failed
 ```
 
 ## Inspect One Run
@@ -99,6 +113,14 @@ output but exact content matters.
 aisdk-dt tools <runOrStepId> --file <path>
 ```
 
+Representative text output labels how calls and results relate:
+
+```text
+run run_123 calls=1 pairedResults=1 replayedResults=0 available=2
+call paired-next-step step=1 getWeather id=call_1 input={"city":"Yerevan"}
+result paired-next-step originalCallStep=1 observedStep=2 getWeather id=call_1 output={"temperature":31}
+```
+
 Include available tool definitions:
 
 ```sh
@@ -116,6 +138,10 @@ aisdk-dt tools <runOrStepId> --tool-call-id <toolCallId> --file <path>
 
 ```sh
 aisdk-dt usage <runOrStepId> --file <path>
+```
+
+```text
+input=1240 noCache=800 cacheRead=440 cacheHit=35.5% output=180 text=150 reasoning=30
 ```
 
 Use this when debugging cost, cache behavior, or unexpectedly large prompts.
@@ -140,6 +166,16 @@ aisdk-dt raw <stepId> --request --json-path 'model' --file <path>
 aisdk-dt raw <stepId> --response --json-path 'content[0]' --max-chars 800 --file <path>
 ```
 
+Bounded JSON preserves original size information:
+
+```json
+{
+  "preview": "{\"type\":\"response.created\"...",
+  "truncated": true,
+  "chars": 4821
+}
+```
+
 Use `--full` only for deliberate local inspection.
 
 ## Build A Timeline
@@ -149,3 +185,5 @@ aisdk-dt timeline <runId> --file <path>
 ```
 
 Use timelines for multi-step runs, nested agent calls, and tool-heavy traces.
+Content is omitted by default; add `--include-content --max-chars 500` only
+when the timing and labels are insufficient.

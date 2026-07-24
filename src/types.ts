@@ -59,11 +59,46 @@ export interface ReasoningContentPart {
   toolCallId?: string;
 }
 
+export interface MediaContentPart {
+  type: 'image' | 'file' | 'reasoning-file';
+  mediaType?: string;
+  filename?: string;
+  image?: unknown;
+  data?: unknown;
+  [key: string]: unknown;
+}
+
+export interface CustomContentPart {
+  type: 'custom';
+  kind?: string;
+  [key: string]: unknown;
+}
+
+export interface ToolApprovalContentPart {
+  type: 'tool-approval-request' | 'tool-approval-response';
+  approvalId?: string;
+  toolCallId?: string;
+  approved?: boolean;
+  reason?: string;
+  [key: string]: unknown;
+}
+
+export interface UnknownContentPart {
+  type?: string;
+  unsupported: true;
+  value?: unknown;
+  [key: string]: unknown;
+}
+
 export type ContentPart =
   | TextContentPart
   | ToolCallContentPart
   | ToolResultContentPart
-  | ReasoningContentPart;
+  | ReasoningContentPart
+  | MediaContentPart
+  | CustomContentPart
+  | ToolApprovalContentPart
+  | UnknownContentPart;
 
 export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
 

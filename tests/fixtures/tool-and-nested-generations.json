@@ -1,0 +1,74 @@
+{
+  "runs": [
+    {
+      "id": "run-tool",
+      "started_at": "2026-07-24T01:00:00.000Z",
+      "parent_run_id": null,
+      "parent_step_id": null,
+      "function_id": "tool-chat"
+    },
+    {
+      "id": "run-child",
+      "started_at": "2026-07-24T01:00:00.500Z",
+      "parent_run_id": "run-tool",
+      "parent_step_id": "step-tool-call",
+      "function_id": "child-lookup"
+    }
+  ],
+  "steps": [
+    {
+      "id": "step-tool-call",
+      "run_id": "run-tool",
+      "step_number": 1,
+      "type": "stream",
+      "model_id": "fixture-model",
+      "provider": "fixture",
+      "started_at": "2026-07-24T01:00:00.100Z",
+      "duration_ms": 50,
+      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":\"Check fixture status.\"}],\"tools\":[{\"name\":\"lookupStatus\",\"description\":\"Look up a fixture status.\",\"parameters\":{\"type\":\"object\"}}]}",
+      "output": "{\"finishReason\":\"tool-calls\",\"content\":[{\"type\":\"tool-call\",\"toolName\":\"lookupStatus\",\"toolCallId\":\"fixture-call\",\"input\":{\"id\":\"fixture\"}}]}",
+      "usage": "{\"inputTokens\":10,\"outputTokens\":4}",
+      "error": null,
+      "raw_request": null,
+      "raw_response": "[{\"type\":\"finish\",\"finishReason\":\"tool-calls\"}]",
+      "raw_chunks": "[]",
+      "provider_options": null
+    },
+    {
+      "id": "step-tool-result",
+      "run_id": "run-tool",
+      "step_number": 2,
+      "type": "generate",
+      "model_id": "fixture-model",
+      "provider": "fixture",
+      "started_at": "2026-07-24T01:00:00.200Z",
+      "duration_ms": 20,
+      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":\"Check fixture status.\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool-call\",\"toolName\":\"lookupStatus\",\"toolCallId\":\"fixture-call\",\"input\":{\"id\":\"fixture\"}}]},{\"role\":\"tool\",\"content\":[{\"type\":\"tool-result\",\"toolName\":\"lookupStatus\",\"toolCallId\":\"fixture-call\",\"output\":{\"status\":\"ready\"}}]}]}",
+      "output": "{\"finishReason\":\"stop\",\"content\":[{\"type\":\"text\",\"text\":\"The fixture is ready.\"}]}",
+      "usage": "{\"inputTokens\":14,\"outputTokens\":6}",
+      "error": null,
+      "raw_request": null,
+      "raw_response": null,
+      "raw_chunks": null,
+      "provider_options": null
+    },
+    {
+      "id": "step-child",
+      "run_id": "run-child",
+      "step_number": 1,
+      "type": "generate",
+      "model_id": "fixture-child-model",
+      "provider": "fixture",
+      "started_at": "2026-07-24T01:00:00.500Z",
+      "duration_ms": null,
+      "input": "{\"prompt\":[{\"role\":\"user\",\"content\":\"Resolve the nested fixture.\"}]}",
+      "output": null,
+      "usage": null,
+      "error": null,
+      "raw_request": null,
+      "raw_response": null,
+      "raw_chunks": null,
+      "provider_options": null
+    }
+  ]
+}

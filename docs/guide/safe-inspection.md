@@ -39,7 +39,9 @@ These commands summarize the data without dumping every raw field.
 
 ## Bound Large Content
 
-Use `--max-chars` whenever output may include:
+All commands have a 32,000-character total-output guard by default, configurable
+with `--max-output-chars`. Use the narrower command-level `--max-chars` whenever
+output may include:
 
 - prompts
 - assistant output
@@ -61,6 +63,23 @@ aisdk-dt raw <stepId> --response --json-path 'content[0]' --max-chars 800 --file
 ```
 
 Use `--full` only for deliberate local inspection.
+
+## What Each Command Can Reveal
+
+| Command                          | Sensitive content that can appear                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `runs`, `steps`, `usage`         | Metadata, IDs, model/provider names, counts, timing, token usage, and short first-message summaries    |
+| default `inspect`                | Bounded final output, tool arguments/results, diagnostics, and metadata; prompt messages remain opt-in |
+| `inspect --messages`, `messages` | Prompt transcript text and content-part metadata                                                       |
+| `output`, `final`                | Assistant text, reasoning, objects, tool arguments, and tool results                                   |
+| `tools`                          | Tool definitions, arguments, and results                                                               |
+| `events`                         | Bounded raw stream event values                                                                        |
+| `timeline`                       | Timing and labels only by default; text/reasoning with `--include-content`                             |
+| `raw`                            | Selected raw request, response, chunk, or provider data                                                |
+
+Known images/files are represented by metadata such as media type and filename;
+unknown content is marked `unsupported: true`. The CLI does not intentionally
+render binary attachment data in semantic message summaries.
 
 ## Pass Absolute Paths Across Repos
 

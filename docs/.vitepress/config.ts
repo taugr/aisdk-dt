@@ -10,7 +10,7 @@ type VitePlugins = NonNullable<
   NonNullable<Parameters<typeof defineConfig>[0]['vite']>['plugins']
 >;
 
-const siteUrl = 'https://tom-auger.github.io/aisdk-dt/';
+const siteUrl = 'https://taugr.github.io/aisdk-dt/';
 const description =
   'CLI for inspecting AI SDK DevTools generations.json files with coding agents.';
 
@@ -94,6 +94,7 @@ export default defineConfig({
           { text: 'Getting Started', link: '/guide/getting-started' },
           { text: 'Agent Skill', link: '/guide/agent-skill' },
           { text: 'Workflows', link: '/guide/workflows' },
+          { text: 'Troubleshooting', link: '/guide/troubleshooting' },
         ],
       },
       {
@@ -101,6 +102,7 @@ export default defineConfig({
         items: [
           { text: 'CLI Reference', link: '/guide/commands' },
           { text: 'Safe Inspection', link: '/guide/safe-inspection' },
+          { text: 'Compatibility', link: '/guide/compatibility' },
           { text: 'Development', link: '/guide/development' },
         ],
       },
@@ -113,11 +115,11 @@ export default defineConfig({
           },
           {
             text: 'Releases',
-            link: 'https://github.com/tom-auger/aisdk-dt/releases',
+            link: 'https://github.com/taugr/aisdk-dt/releases',
           },
           {
             text: 'Contributing',
-            link: 'https://github.com/tom-auger/aisdk-dt/blob/main/CONTRIBUTING.md',
+            link: 'https://github.com/taugr/aisdk-dt/blob/main/CONTRIBUTING.md',
           },
         ],
       },
@@ -139,12 +141,16 @@ export default defineConfig({
           items: [
             { text: 'Workflows', link: '/guide/workflows' },
             { text: 'Safe Inspection', link: '/guide/safe-inspection' },
+            { text: 'Troubleshooting', link: '/guide/troubleshooting' },
           ],
         },
         {
           text: 'Reference',
           collapsed: false,
-          items: [{ text: 'CLI Reference', link: '/guide/commands' }],
+          items: [
+            { text: 'CLI Reference', link: '/guide/commands' },
+            { text: 'Compatibility', link: '/guide/compatibility' },
+          ],
         },
         {
           text: 'Repository',
@@ -154,7 +160,7 @@ export default defineConfig({
       ],
     },
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/tom-auger/aisdk-dt' },
+      { icon: 'github', link: 'https://github.com/taugr/aisdk-dt' },
     ],
     footer: {
       message:

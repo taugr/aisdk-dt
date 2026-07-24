@@ -97,7 +97,7 @@ pnpm inspect:runs
 Inspect tool calls for the latest run:
 
 ```bash
-RUN_ID=$(pnpm exec aisdk-dt runs --file .devtools/generations.json --limit 1 --json-path 'items[0].id' --text)
+RUN_ID=$(pnpm exec aisdk-dt runs --file .devtools/generations.json --limit 1 --json-path 'runs[0].id' --text)
 pnpm exec aisdk-dt tools "$RUN_ID" --file .devtools/generations.json --pretty
 ```
 

@@ -96,6 +96,12 @@ Start with recent runs:
 aisdk-dt runs --limit 10 --file <path>
 ```
 
+For scripts, select the latest run ID without parsing the full result:
+
+```sh
+RUN_ID=$(aisdk-dt runs --limit 1 --json-path 'runs[0].id' --text --file <path>)
+```
+
 Inspect the prompt transcript:
 
 ```sh
@@ -124,6 +130,16 @@ aisdk-dt raw <stepId> --response --json-path 'content[0]' --max-chars 800 --file
 ```
 
 Prefer `--json-path` and `--max-chars` before `--full`.
+
+Long values are represented with explicit metadata:
+
+```json
+{
+  "preview": "bounded beginning of the value",
+  "truncated": true,
+  "chars": 18432
+}
+```
 
 ## Update The CLI
 
@@ -163,4 +179,6 @@ If you use `npx` or `pnpx`, you usually do not need to update anything manually;
 - [Workflows](/guide/workflows)
 - [CLI Reference](/guide/commands)
 - [Safe Inspection](/guide/safe-inspection)
+- [Compatibility](/guide/compatibility)
+- [Troubleshooting](/guide/troubleshooting)
 - [Example Chatbot (repo)](https://github.com/taugr/aisdk-dt/tree/main/examples/simple-chatbot)

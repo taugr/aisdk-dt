@@ -4,11 +4,16 @@ import type {
   ParsedOutput,
   ParsedUsage,
   PromptMessage,
+  ContentPart,
+  CustomContentPart,
+  MediaContentPart,
   ReasoningContentPart,
   TextContentPart,
+  ToolApprovalContentPart,
   ToolCallContentPart,
   ToolDefinition,
   ToolResultContentPart,
+  UnknownContentPart,
 } from './types.js';
 
 const nullableString = z.string().nullable();
@@ -55,12 +60,66 @@ export const reasoningContentPartSchema = z
   })
   .passthrough() satisfies z.ZodType<ReasoningContentPart>;
 
+export const mediaContentPartSchema = z
+  .object({
+    type: z.union([
+      z.literal('image'),
+      z.literal('file'),
+      z.literal('reasoning-file'),
+    ]),
+    mediaType: z.string().optional(),
+    filename: z.string().optional(),
+    image: z.unknown().optional(),
+    data: z.unknown().optional(),
+  })
+  .passthrough() satisfies z.ZodType<MediaContentPart>;
+
+export const customContentPartSchema = z
+  .object({
+    type: z.literal('custom'),
+    kind: z.string().optional(),
+  })
+  .passthrough() satisfies z.ZodType<CustomContentPart>;
+
+export const toolApprovalContentPartSchema = z
+  .object({
+    type: z.union([
+      z.literal('tool-approval-request'),
+      z.literal('tool-approval-response'),
+    ]),
+    approvalId: z.string().optional(),
+    toolCallId: z.string().optional(),
+    approved: z.boolean().optional(),
+    reason: z.string().optional(),
+  })
+  .passthrough() satisfies z.ZodType<ToolApprovalContentPart>;
+
+export const unknownContentPartSchema: z.ZodType<UnknownContentPart> = z
+  .unknown()
+  .transform((value): UnknownContentPart => {
+    if (typeof value === 'object' && value != null && !Array.isArray(value)) {
+      return {
+        ...(value as Record<string, unknown>),
+        unsupported: true,
+      };
+    }
+    return {
+      type: 'unknown',
+      value,
+      unsupported: true,
+    };
+  });
+
 export const contentPartSchema = z.union([
   textContentPartSchema,
   toolCallContentPartSchema,
   toolResultContentPartSchema,
   reasoningContentPartSchema,
-]);
+  mediaContentPartSchema,
+  customContentPartSchema,
+  toolApprovalContentPartSchema,
+  unknownContentPartSchema,
+]) satisfies z.ZodType<ContentPart>;
 
 export const promptMessageSchema = z
   .object({

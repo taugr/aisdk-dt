@@ -18,6 +18,8 @@ pnpm run format
 pnpm run lint
 pnpm run test
 pnpm run build
+pnpm run test:package
+pnpm run benchmark
 ```
 
 For local docs development:
@@ -30,8 +32,10 @@ pnpm run docs:preview
 
 ## Project Shape
 
-- `src/cli.ts`: CLI entrypoint
-- `src/generations.ts`: parsing and summarization helpers
+- `src/cli.ts`: minimal executable entrypoint
+- `src/program.ts`: command definitions and output wiring
+- `src/generations.ts`: loading, indexes, parsing, and summarization helpers
+- `src/output-policy.ts`: structural and total-output bounds
 - `src/schema.ts`: runtime validation schemas
 - `src/types.ts`: shared types
 - `.agents/skills/aisdk-dt-inspector/`: bundled agent skill
@@ -49,6 +53,20 @@ The package publishes:
 
 - `dist`
 - `.agents/skills/aisdk-dt-inspector/SKILL.md`
+
+## Performance
+
+`pnpm run benchmark` generates a synthetic database with high step counts,
+nested runs, tool data, and 2,000-character raw payloads. Override its size with
+`AISDK_DT_BENCHMARK_RUNS`, `AISDK_DT_BENCHMARK_STEPS`, and
+`AISDK_DT_BENCHMARK_ITERATIONS`.
+
+On the 2026-07-24 development run, a 2,000-run/8,000-step database was 22.9 MB.
+Warm subprocess measurements for `runs`, `inspect`, `messages`, `tools`,
+`usage`, and `timeline` were 124–127 ms (two measured iterations). Query
+indexes and per-step parse caches made query work small relative to full-file
+read/schema validation, so streaming parsing was not adopted without stronger
+evidence.
 
 ## Project Documents
 

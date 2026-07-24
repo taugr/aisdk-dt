@@ -26,10 +26,10 @@ local project dependency.
 ## Default Workflow
 
 1. Start with the default LLM-oriented inspection view. With no subcommand,
-   `aisdk-dt` inspects the latest root run and includes recent messages, tool
-   calls/results, usage, cache usage, step status, timeline, a narrative
-   summary, final output, and error diagnostics with bounded previews.
-   Recent messages are available with `--messages <number>` when needed.
+   `aisdk-dt` inspects the latest root run and includes bounded tool
+   calls/results, usage, cache usage, step status, a content-free timeline, a
+   narrative summary, final output, and error diagnostics. Prompt messages are
+   omitted unless `--messages <number>` is explicitly requested.
 
    ```bash
    aisdk-dt --file <path>
@@ -41,6 +41,7 @@ local project dependency.
 
    ```bash
    aisdk-dt runs --limit 10 --file <path>
+   aisdk-dt runs --limit 1 --json-path 'runs[0].id' --text --file <path>
    aisdk-dt inspect <runId> --file <path>
    ```
 
@@ -70,6 +71,8 @@ local project dependency.
   `events` before `raw`.
 - Use `--max-chars` whenever output could include prompts, reasoning, tool
   arguments, tool results, raw requests, raw responses, or raw chunks.
+- Keep the global `--max-output-chars` guard enabled. Raise
+  `--max-file-bytes` only after confirming an oversized file is expected.
 - Use `raw --json-path` before `raw --full`; quote JSON paths that contain
   brackets, such as `'input[0].content'`.
 - Treat `--full` as a last resort for deliberate local inspection, not as
@@ -100,3 +103,5 @@ local project dependency.
 - Need provider wire payloads or stream chunks: `raw` with a narrow
   `--json-path`.
 - Need timing/nested call structure: `timeline`.
+- Need timeline text/reasoning: `timeline --include-content --max-chars 500`;
+  content is omitted by default.
