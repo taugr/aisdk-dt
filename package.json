@@ -55,9 +55,9 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
-    "ai": "^7.0.51",
-    "bumpp": "^12.1.1",
+    "@types/node": "^26.2.0",
+    "ai": "^7.0.58",
+    "bumpp": "^12.2.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
     "oxfmt": "^0.62.0",
