@@ -21,7 +21,7 @@ jobs:
       - name: Set Node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install
@@ -49,7 +49,7 @@ jobs:
       - name: Set Node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install
@@ -100,7 +100,7 @@ jobs:
       - name: Set Node
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Download package
         uses: actions/download-artifact@v8
