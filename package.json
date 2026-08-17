@@ -56,18 +56,18 @@
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
-    "ai": "^7.0.58",
-    "bumpp": "^12.2.0",
+    "ai": "^7.0.66",
+    "bumpp": "^12.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
     "oxfmt": "^0.63.0",
-    "oxlint": "^1.77.0",
+    "oxlint": "^1.78.0",
     "oxlint-tsgolint": "^7.0.2001",
     "tsdown": "^0.22.14",
     "typescript": "^7.0.2",
     "vitepress": "^1.6.4",
     "vitepress-plugin-group-icons": "^1.7.6",
-    "vitepress-plugin-llms": "^1.13.4",
+    "vitepress-plugin-llms": "^1.13.5",
     "vitest": "^4.1.10"
   },
   "engines": {
