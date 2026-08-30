@@ -13,14 +13,14 @@ importers:
         version: 15.0.0
       zod:
         specifier: ^4.4.3
-        version: 4.4.3
+        version: 4.5.2
     devDependencies:
       '@types/node':
         specifier: ^26.2.0
         version: 26.2.0
       ai:
         specifier: ^7.0.66
-        version: 7.0.73(zod@4.4.3)
+        version: 7.0.73(zod@4.5.2)
       bumpp:
         specifier: ^12.2.1
         version: 12.2.1
@@ -62,10 +62,10 @@ importers:
     dependencies:
       '@ai-sdk/openai':
         specifier: ^4.0.42
-        version: 4.0.42(zod@4.4.3)
+        version: 4.0.42(zod@4.5.2)
       ai:
         specifier: ^7.0.66
-        version: 7.0.73(zod@4.4.3)
+        version: 7.0.73(zod@4.5.2)
       next:
         specifier: 16.3.1
         version: 16.3.1(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -77,7 +77,7 @@ importers:
         version: 19.2.8(react@19.2.8)
       zod:
         specifier: ^4.4.3
-        version: 4.4.3
+        version: 4.5.2
     devDependencies:
       '@ai-sdk/devtools':
         specifier: ^1.0.12
@@ -2754,8 +2754,8 @@ packages:
   yuku-parser@0.8.7:
     resolution: {integrity: sha512-vRD9nwt4L3aYpxNqeSC4WqLv58xrXef0Ong1Mc45CTXTIpvLafx7JO05sczmQZwdLEZvywrLOGdNC5+Rp5N1BQ==}
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.5.2:
+    resolution: {integrity: sha512-XkYXCol10+ba/6F/cueWV+TezUeOqXW0hdeJt5CdXjTYeAgAQg5N03RQdJ80mhfFE72+pblvYMW4wy2Qp4Qbrg==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -2773,36 +2773,36 @@ snapshots:
       '@hono/node-server': 1.19.17(hono@4.13.2)
       hono: 4.13.2
 
-  '@ai-sdk/gateway@4.0.59(zod@4.4.3)':
+  '@ai-sdk/gateway@4.0.59(zod@4.5.2)':
     dependencies:
       '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.28(zod@4.4.3)
+      '@ai-sdk/provider-utils': 5.0.28(zod@4.5.2)
       '@vercel/oidc': 3.2.0
-      zod: 4.4.3
+      zod: 4.5.2
 
-  '@ai-sdk/openai@4.0.42(zod@4.4.3)':
+  '@ai-sdk/openai@4.0.42(zod@4.5.2)':
     dependencies:
       '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.27(zod@4.4.3)
-      zod: 4.4.3
+      '@ai-sdk/provider-utils': 5.0.27(zod@4.5.2)
+      zod: 4.5.2
 
-  '@ai-sdk/provider-utils@5.0.27(zod@4.4.3)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.7
-      '@standard-schema/spec': 1.1.0
-      '@workflow/serde': 4.1.0
-      eventsource-parser: 3.1.1
-      undici: 7.29.0
-      zod: 4.4.3
-
-  '@ai-sdk/provider-utils@5.0.28(zod@4.4.3)':
+  '@ai-sdk/provider-utils@5.0.27(zod@4.5.2)':
     dependencies:
       '@ai-sdk/provider': 4.0.7
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.1
       undici: 7.29.0
-      zod: 4.4.3
+      zod: 4.5.2
+
+  '@ai-sdk/provider-utils@5.0.28(zod@4.5.2)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.7
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.1.1
+      undici: 7.29.0
+      zod: 4.5.2
 
   '@ai-sdk/provider@4.0.7':
     dependencies:
@@ -3908,12 +3908,12 @@ snapshots:
 
   '@yuku-toolchain/types@0.8.7': {}
 
-  ai@7.0.73(zod@4.4.3):
+  ai@7.0.73(zod@4.5.2):
     dependencies:
-      '@ai-sdk/gateway': 4.0.59(zod@4.4.3)
+      '@ai-sdk/gateway': 4.0.59(zod@4.5.2)
       '@ai-sdk/provider': 4.0.7
-      '@ai-sdk/provider-utils': 5.0.28(zod@4.4.3)
-      zod: 4.4.3
+      '@ai-sdk/provider-utils': 5.0.28(zod@4.5.2)
+      zod: 4.5.2
 
   algoliasearch@5.56.0:
     dependencies:
@@ -5131,6 +5131,6 @@ snapshots:
       '@yuku-parser/binding-win32-arm64': 0.8.7
       '@yuku-parser/binding-win32-x64': 0.8.7
 
-  zod@4.4.3: {}
+  zod@4.5.2: {}
 
   zwitch@2.0.4: {}
