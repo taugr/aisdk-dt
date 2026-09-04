@@ -1,5 +1,18 @@
 # AGENTS.md
 
+## Codex workflow
+
+This project's `.codex/config.toml` selects GPT-6 Astra (`gpt-6-astra`) with medium reasoning. Explicit user model choices take precedence. This configures Codex development work; application model selections remain separate.
+
+- Complete authorized work through implementation and relevant verification. Use existing project patterns for routine, reversible decisions; ask when missing information materially changes scope or outcome.
+- Preserve unrelated working-tree changes and existing application behavior. Follow explicit boundaries on planning, commits, pushes, releases, and deployment.
+- Prepare a concrete, reviewable result before requesting any additional authorization that is actually needed. Continue independent authorized work while awaiting clarification.
+- Follow explicit user instructions over skill guidelines, subject to system and developer requirements. If a skill blocks progress, link to the exact instruction and explain why it applies.
+- Keep progress updates and final reports concise: explain what changed, what was verified, and any remaining blocker.
+- Run checks proportional to the change and complete required project gates. Instruction-only changes need a diff, Markdown formatting, and configuration validation; behavior changes need relevant tests. Do not repeat successful checks without new evidence.
+- Use subagents when requested by the user or required by applicable instructions. Give each a bounded responsibility and preserve other agents' changes.
+- Use `pnpm` and check `package.json` for current scripts. Keep generated files and local artifacts out of the commit unless explicitly requested.
+
 Guidance for coding agents working in this repository.
 
 ## Repo Overview
