@@ -1,8 +1,7 @@
-import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   findLatestRun,
   findRun,
@@ -38,26 +37,21 @@ describe('database loading and indexes', () => {
     const databasePath = path.join(temporaryDirectory, 'generations.json');
     const validDatabase = JSON.stringify(syntheticDatabase(1));
     fs.writeFileSync(databasePath, '{"runs":', 'utf8');
-    const writer = spawn(
-      process.execPath,
-      [
-        '-e',
-        "setTimeout(() => require('node:fs').writeFileSync(process.argv[1], process.argv[2]), 25)",
-        databasePath,
-        validDatabase,
-      ],
-      { stdio: 'ignore' },
-    );
+    // Complete the file after the first read, without relying on process startup timing.
+    const read = vi.spyOn(fs, 'readFileSync').mockImplementationOnce(() => {
+      fs.writeFileSync(databasePath, validDatabase, 'utf8');
+      return '{"runs":';
+    });
 
     try {
       const db = readDatabase(databasePath, {
         attempts: 3,
-        retryDelayMs: 75,
+        retryDelayMs: 0,
       });
 
       expect(db.runs).toHaveLength(1);
     } finally {
-      writer.kill();
+      read.mockRestore();
       fs.rmSync(temporaryDirectory, { recursive: true, force: true });
     }
   });
