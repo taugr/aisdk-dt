@@ -55,13 +55,13 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/node": "^26.4.0",
-    "ai": "^7.0.84",
-    "bumpp": "^12.2.2",
+    "@types/node": "^26.4.1",
+    "ai": "^7.0.92",
+    "bumpp": "^12.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.4.1",
     "oxfmt": "^0.66.0",
-    "oxlint": "^1.80.0",
+    "oxlint": "^1.81.0",
     "oxlint-tsgolint": "^7.0.2001",
     "tsdown": "^0.23.0",
     "typescript": "^7.0.2",
