@@ -4,6 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 
 const projectRoot = process.cwd();
+const packageJson = JSON.parse(
+  fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'),
+);
 const fixturePath = path.join(
   projectRoot,
   'tests',
@@ -26,10 +29,14 @@ try {
 
   fs.writeFileSync(
     path.join(consumerDirectory, 'package.json'),
-    JSON.stringify({ name: 'aisdk-dt-smoke-consumer', private: true }),
+    JSON.stringify({
+      name: 'aisdk-dt-smoke-consumer',
+      private: true,
+      packageManager: packageJson.packageManager,
+    }),
   );
   runPnpm(
-    ['add', '--offline', '--ignore-scripts', path.join(temporaryRoot, tarball)],
+    ['add', '--ignore-scripts', path.join(temporaryRoot, tarball)],
     consumerDirectory,
   );
 
@@ -40,9 +47,6 @@ try {
     'aisdk-dt',
   );
   const version = run(binary, ['--version'], consumerDirectory);
-  const packageJson = JSON.parse(
-    fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'),
-  );
   if (version.trim() !== packageJson.version) {
     throw new Error(
       `Packed binary reported ${version.trim()}, expected ${packageJson.version}.`,
