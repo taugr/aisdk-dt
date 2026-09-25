@@ -52,23 +52,23 @@
   },
   "dependencies": {
     "commander": "^15.0.0",
-    "zod": "^4.6.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^26.5.1",
-    "ai": "^7.0.97",
+    "@types/node": "^26.6.2",
+    "ai": "^7.0.114",
     "bumpp": "^12.3.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.1",
-    "oxfmt": "^0.67.0",
-    "oxlint": "^1.82.0",
-    "oxlint-tsgolint": "^7.0.2001",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2003",
     "tsdown": "^0.23.0",
     "typescript": "^7.0.2",
     "vitepress": "^1.6.4",
     "vitepress-plugin-group-icons": "^1.7.6",
-    "vitepress-plugin-llms": "^1.13.5",
-    "vitest": "^5.0.0"
+    "vitepress-plugin-llms": "^1.14.0",
+    "vitest": "^5.0.1"
   },
   "engines": {
     "node": ">=20"
