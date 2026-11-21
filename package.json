@@ -51,24 +51,24 @@
     "*": "oxfmt --no-error-on-unmatched-pattern"
   },
   "dependencies": {
-    "commander": "^15.0.0",
+    "commander": "^14.0.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "ai": "^7.0.163",
+    "ai": "^7.0.177",
     "bumpp": "^12.3.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.6.0",
-    "oxfmt": "^0.76.0",
-    "oxlint": "^1.91.0",
-    "oxlint-tsgolint": "^7.0.2006",
-    "tsdown": "^0.23.5",
+    "lint-staged": "^17.6.1",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "oxlint-tsgolint": "^7.0.2007",
+    "tsdown": "^0.23.7",
     "typescript": "^7.0.2",
     "vitepress": "^1.6.4",
-    "vitepress-plugin-group-icons": "^1.8.1",
-    "vitepress-plugin-llms": "^1.14.0",
-    "vitest": "^5.1.0"
+    "vitepress-plugin-group-icons": "^1.8.2",
+    "vitepress-plugin-llms": "^1.15.0",
+    "vitest": "^5.1.1"
   },
   "engines": {
     "node": ">=20"
